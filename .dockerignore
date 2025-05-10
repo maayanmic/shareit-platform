@@ -35,4 +35,3 @@ build
 # dockerfile
 Dockerfile
 .dockerignore
-nginx.conf 
