@@ -1,32 +1,13 @@
-# Base image
-FROM node:18-alpine as build
+# Use Node.js to build the app
+FROM node:18 as builder
 
-# Set working directory
 WORKDIR /app
-
-# Copy package.json and package-lock.json
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install --legacy-peer-deps
-
-# Copy the rest of the application code
 COPY . .
-
-# Build the application
+RUN npm install
 RUN npm run build
 
-# Serve the application with nginx
+# Serve the build with a lightweight web server
 FROM nginx:alpine
-
-# Copy the build output to nginx's html directory
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
+COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
-
-# Start nginx server
-CMD ["nginx", "-g", "daemon off;"] 
+CMD ["nginx", "-g", "daemon off;"]
