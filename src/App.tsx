@@ -7,6 +7,9 @@ import { Login } from './pages/Login';
 import { ScanQR } from './pages/ScanQR';
 import { useAuth } from './contexts/AuthContext';
 import { Register } from './pages/Register';
+import { BusinessList } from './pages/BusinessList';
+import { BusinessProfile } from './pages/BusinessProfile';
+import { BusinessForm } from './pages/BusinessForm';
 
 const theme = extendTheme({
   direction: 'rtl',
@@ -44,11 +47,31 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/businesses" element={<BusinessList />} />
+              <Route path="/business/:id" element={<BusinessProfile />} />
+              
+              {/* Protected Routes */}
               <Route
                 path="/scan"
                 element={
                   <ProtectedRoute>
                     <ScanQR />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/business/new"
+                element={
+                  <ProtectedRoute>
+                    <BusinessForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/business/edit/:id"
+                element={
+                  <ProtectedRoute>
+                    <BusinessForm />
                   </ProtectedRoute>
                 }
               />
