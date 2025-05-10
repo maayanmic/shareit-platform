@@ -52,3 +52,85 @@ export default tseslint.config({
   },
 })
 ```
+
+# ShareIt
+
+A React application for sharing content using QR codes, built with Chakra UI and Firebase.
+
+## Docker Deployment Instructions
+
+### Prerequisites
+
+- Docker installed on your system
+- Docker Compose installed on your system
+
+### Building and Running with Docker
+
+1. Clone the repository:
+   ```
+   git clone <repository-url>
+   cd ShareIt
+   ```
+
+2. Build and run the Docker container:
+   ```
+   docker-compose up -d --build
+   ```
+
+3. Access the application:
+   Open your browser and navigate to `http://localhost`
+
+### Stopping the Docker Container
+
+```
+docker-compose down
+```
+
+## Development Without Docker
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- npm (v8 or higher)
+
+### Running Locally
+
+1. Install dependencies:
+   ```
+   npm install
+   ```
+
+2. Run the development server:
+   ```
+   npm run dev
+   ```
+
+3. Access the application:
+   Open your browser and navigate to `http://localhost:5173`
+
+### Building for Production
+
+```
+npm run build
+```
+
+The build artifacts will be stored in the `dist/` directory.
+
+## Environment Variables
+
+For security reasons, environment variables are not included in the Docker image by default. To use Firebase or other services that require API keys:
+
+1. Create a `.env` file in the root directory
+2. Add your environment variables
+3. Uncomment the environment section in `docker-compose.yml`
+
+Example `.env` file:
+
+```
+FIREBASE_API_KEY=your-api-key
+FIREBASE_AUTH_DOMAIN=your-auth-domain
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_STORAGE_BUCKET=your-storage-bucket
+FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+FIREBASE_APP_ID=your-app-id
+```
