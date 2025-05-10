@@ -8,8 +8,7 @@ import {
   deleteDoc, 
   serverTimestamp, 
   query, 
-  where,
-  Timestamp 
+  where
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Business } from '../models/Business';

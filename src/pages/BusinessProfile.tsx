@@ -5,7 +5,6 @@ import {
   Container, 
   Heading, 
   Text, 
-  Stack, 
   VStack, 
   HStack, 
   Image, 
@@ -17,7 +16,7 @@ import {
   SkeletonText,
   useToast
 } from '@chakra-ui/react';
-import { FiPhone, FiMail, FiGlobe, FiMap, FiClock, FiEdit, FiTrash2, FiShare2 } from 'react-icons/fi';
+import { FiPhone, FiMail, FiGlobe, FiMap, FiEdit, FiTrash2, FiShare2 } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { getBusinessById, deleteBusiness } from '../services/businessService';
 import type { Business } from '../models/Business';

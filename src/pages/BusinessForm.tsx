@@ -15,9 +15,7 @@ import {
   Textarea,
   VStack,
   HStack,
-  useToast,
-  InputGroup,
-  InputLeftAddon
+  useToast
 } from '@chakra-ui/react';
 import { FiSave, FiX } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
