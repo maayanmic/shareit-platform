@@ -10,6 +10,13 @@ import { Register } from './pages/Register';
 
 const theme = extendTheme({
   direction: 'rtl',
+  styles: {
+    global: {
+      body: {
+        bg: 'gray.50',
+      },
+    },
+  },
 });
 
 // Protected Route component
@@ -29,7 +36,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
-    <ChakraProvider theme={theme} resetCSS>
+    <ChakraProvider theme={theme}>
       <AuthProvider>
         <Router>
           <Layout>
