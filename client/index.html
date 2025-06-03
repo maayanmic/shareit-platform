@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>ShareIt - פלטפורמת המלצות עסקית</title>
+    <meta name="description" content="שתף המלצות על עסקים שאתה אוהב, עזור לחברים לגלות מקומות נהדרים, והרווח תגמולים על כל הפניה מוצלחת עם ShareIt." />
+    <meta property="og:title" content="ShareIt - פלטפורמת המלצות חברתית" />
+    <meta property="og:description" content="שתף המלצות, עזור לחברים לגלות מקומות נהדרים, והרווח תגמולים על כל הפניה מוצלחת." />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <!-- Facebook SDK -->
+    <div id="fb-root"></div>
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId      : '1408603290182678',
+          cookie     : true,
+          xfbml      : true,
+          version    : 'v18.0'
+        });
+      };
+
+      (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/he_IL/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+    </script>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
