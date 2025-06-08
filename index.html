@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShareIt - פלטפורמת ההמלצות החכמה</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- CSS מותאם -->
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .nav-link {
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            color: #374151;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s;
+        }
+        
+        .nav-link:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .nav-link.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header/Navigation -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="container">
+            <nav class="flex items-center justify-between py-4">
+                <div class="flex items-center space-x-8 space-x-reverse">
+                    <a href="#" class="nav-link" data-route="home">בית</a>
+                    <a href="#" class="nav-link" data-route="businesses">עסקים</a>
+                    <a href="#" class="nav-link" data-route="users">משתמשים</a>
+                    <a href="#" class="nav-link" data-route="recommendations">המלצות</a>
+                </div>
+                
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <div id="auth-section">
+                        <div id="login-buttons" class="space-x-2 space-x-reverse">
+                            <button id="login-btn" class="btn-primary">התחבר</button>
+                            <button id="register-btn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">הירשם</button>
+                        </div>
+                        
+                        <div id="user-info" class="hidden flex items-center space-x-4 space-x-reverse">
+                            <img id="user-avatar" class="w-8 h-8 rounded-full" src="" alt="תמונת פרופיל">
+                            <span id="user-name"></span>
+                            <button id="logout-btn" class="text-red-600 hover:text-red-700">התנתק</button>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="container py-8">
+        <!-- דף הבית -->
+        <div id="home-page" class="page">
+            <div class="text-center my-8 md:my-12">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">ברוכים הבאים ל-ShareIt</h1>
+                <p class="mt-4 text-lg text-gray-600 max-w-xl mx-auto">פלטפורמת השיתוף והמלצות שתחבר בינך לבין העסקים שאתה אוהב</p>
+            </div>
+            
+            <!-- אזור הלוגו -->
+            <div class="relative overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-8 md:p-12 mb-10">
+                <div class="flex flex-col md:flex-row items-center justify-between">
+                    <div class="md:w-1/2 text-right">
+                        <h2 class="text-2xl font-bold mb-3">שתף המלצות, צבור נקודות</h2>
+                        <p class="text-gray-700 mb-6">המלץ על עסקים שאתה אוהב, צבור נקודות על כל המלצה מוצלחת והמר אותן לכל המילא מוזלת</p>
+                        <button class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-3 rounded-lg font-medium">
+                            איך זה עובד?
+                        </button>
+                    </div>
+                    <div class="md:w-1/2 mt-6 md:mt-0">
+                        <img id="logo-image" src="" alt="ShareIt לוגו" class="w-full h-48 object-contain">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- המלצות אחרונות -->
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold mb-6 text-right">המלצות אחרונות</h2>
+                <div id="recommendations-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- המלצות יטענו כאן דינמית -->
+                </div>
+            </div>
+        </div>
+
+        <!-- דף עסקים -->
+        <div id="businesses-page" class="page hidden">
+            <h1 class="text-2xl font-bold mb-6 text-right">בתי עסק</h1>
+            <div id="businesses-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- עסקים יטענו כאן דינמית -->
+            </div>
+        </div>
+
+        <!-- דף משתמשים -->
+        <div id="users-page" class="page hidden">
+            <h1 class="text-2xl font-bold mb-6 text-right">משתמשים</h1>
+            <div id="users-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- משתמשים יטענו כאן דינמית -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal להתחברות -->
+    <div id="auth-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <h2 id="modal-title" class="text-xl font-bold mb-4 text-center">התחברות</h2>
+            
+            <form id="auth-form">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2 text-right">אימייל</label>
+                    <input type="email" id="email" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2 text-right">סיסמה</label>
+                    <input type="password" id="password" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                </div>
+                
+                <div id="register-fields" class="hidden">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2 text-right">שם מלא</label>
+                        <input type="text" id="fullName" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                
+                <button type="submit" id="auth-submit" class="w-full btn-primary mb-4">התחבר</button>
+            </form>
+            
+            <div class="border-t pt-4">
+                <button id="google-login" class="w-full bg-red-500 text-white py-2 px-4 rounded mb-2 hover:bg-red-600">
+                    התחבר עם Google
+                </button>
+                <button id="facebook-login" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                    התחבר עם Facebook
+                </button>
+            </div>
+            
+            <button id="close-modal" class="mt-4 w-full text-gray-500 hover:text-gray-700">סגור</button>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script type="module" src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
