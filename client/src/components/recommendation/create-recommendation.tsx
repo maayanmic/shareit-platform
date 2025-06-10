@@ -47,9 +47,9 @@ export default function CreateRecommendation() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { openScanner } = useQRScanner();
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormValues>({
@@ -61,15 +61,18 @@ export default function CreateRecommendation() {
     },
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const selectedFile = files[0];
+      setImageFile(selectedFile);
+      
+      // Create a preview URL for display purposes only
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(selectedFile);
     }
   };
 
@@ -97,18 +100,34 @@ export default function CreateRecommendation() {
       let imageUrl = null;
       
       if (imageFile) {
-        // Upload the image to Firebase Storage
-        imageUrl = await uploadImage(
-          imageFile,
-          `recommendations/${user.uid}/${Date.now()}_${imageFile.name}`
-        );
+        // Check file size
+        if (imageFile.size > 5 * 1024 * 1024) {
+          toast({
+            title: "Error",
+            description: "File size must be less than 5MB",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Upload the image to Firebase Storage and get the download URL
+        const imagePath = `recommendations/${user.uid}/${Date.now()}_${imageFile.name}`;
+        imageUrl = await uploadImage(imageFile, imagePath);
+        
+        // Make sure we have a valid URL
+        if (!imageUrl) {
+          throw new Error("Failed to get image URL from Firebase Storage");
+        }
+
+        // Log the URL for debugging
+        console.log("Firebase Storage URL:", imageUrl);
       }
 
       // Find the business details
       const business = businesses.find(b => b.id === data.businessId);
       
-      // Create recommendation document
-      const recommendationId = await createRecommendation({
+      // Create recommendation document with the Firebase Storage URL
+      const recommendationData = {
         userId: user.uid,
         userDisplayName: user.displayName,
         userPhotoURL: user.photoURL,
@@ -116,7 +135,7 @@ export default function CreateRecommendation() {
         businessName: business?.name || data.businessId,
         description: data.description,
         socialNetwork: data.socialNetwork,
-        imageUrl,
+        imageUrl, // This should now be the Firebase Storage URL
         discount: business?.id === "coffee" ? "10% OFF" : 
                  business?.id === "attire" ? "15% OFF" : "20% OFF",
         validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
@@ -125,7 +144,12 @@ export default function CreateRecommendation() {
         }),
         savedCount: 0,
         createdAt: new Date(),
-      });
+      };
+
+      // Log the recommendation data for debugging
+      console.log("Creating recommendation with data:", recommendationData);
+
+      const recommendationId = await createRecommendation(recommendationData);
 
       toast({
         title: "Success!",
@@ -178,42 +202,43 @@ export default function CreateRecommendation() {
               className="w-full h-32 md:h-40 resize-none"
             />
           </div>
-          <div className="w-full mb-8 md:mb-10">
-            <div className="flex items-center justify-center w-full">
+
+          {/* Image Upload Section */}
+          <div className="w-full mb-6">
+            <div className="flex flex-col items-center gap-4">
               {imagePreview ? (
-                <div className="relative w-full">
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
-                    className="h-32 md:h-48 w-full object-cover rounded-lg" 
+                <div className="relative w-full max-w-md">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-48 object-cover rounded-lg"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-2 right-2"
                     onClick={() => {
                       setImagePreview(null);
                       setImageFile(null);
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = "";
-                      }
                     }}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
                   >
-                    הסר
-                  </Button>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
               ) : (
-                <label className="flex flex-col w-full h-24 md:h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-300">
+                <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Upload className="w-8 h-8 text-gray-400 mb-1" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">העלה תמונה או וידאו</p>
+                    <Camera className="w-8 h-8 mb-2 text-gray-500" />
+                    <p className="mb-2 text-sm text-gray-500">
+                      <span className="font-semibold">לחץ להעלאת תמונה</span> או גרור ושחרר
+                    </p>
+                    <p className="text-xs text-gray-500">PNG, JPG או JPEG (מקסימום 5MB)</p>
                   </div>
-                  <input 
-                    ref={fileInputRef}
-                    type="file" 
-                    className="hidden" 
-                    accept="image/*,video/*"
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
                     onChange={handleFileChange}
                   />
                 </label>

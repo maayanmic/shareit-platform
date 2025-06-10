@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { 
   getAuth, 
   signInWithRedirect,
@@ -39,13 +39,13 @@ const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "placeholder-api-key",
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID || "placeholder-project"}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "placeholder-project",
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID || "placeholder-project"}.appspot.com`,
+  storageBucket: "shareit-454f0.firebasestorage.app",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "placeholder-messaging-id",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "placeholder-app-id"
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
@@ -281,11 +281,54 @@ const facebookProvider = new FacebookAuthProvider();
   }
 })();
 
+// פונקציה משופרת לזיהוי מובייל
+const isMobile = () => {
+  // זיהוי מובייל רב-שכבתי
+  const userAgent = navigator.userAgent.toLowerCase();
+  
+  // בדיקה ראשונית לפי User Agent
+  const mobileKeywords = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i;
+  const isMobileUA = mobileKeywords.test(navigator.userAgent);
+  
+  // בדיקה לפי יכולות המכשיר
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const isSmallScreen = window.innerWidth <= 768;
+  
+  // בדיקה נוספת לפי platform
+  const mobileOS = /android|ios|iphone|ipad|ipod/i.test(navigator.platform || '');
+  
+  // תוצאה סופית
+  const result = isMobileUA || mobileOS || (isTouchDevice && isSmallScreen);
+  
+  console.log("Enhanced mobile detection:", {
+    userAgent: userAgent,
+    isMobileUA,
+    mobileOS,
+    isTouchDevice,
+    isSmallScreen,
+    windowWidth: window.innerWidth,
+    platform: navigator.platform,
+    finalResult: result
+  });
+  
+  return result;
+};
+
 // Auth functions
 export const signInWithGoogle = async () => {
   try {
-    // שינוי משימוש ב-redirect לשימוש ב-popup לחוויה טובה יותר
-    const result = await signInWithPopup(auth, googleProvider);
+    let result;
+    
+    // במובייל נשתמש ב-redirect, במחשב ב-popup
+    if (isMobile()) {
+      console.log("התחברות גוגל במובייל עם redirect...");
+      await signInWithRedirect(auth, googleProvider);
+      return; // התוצאה תטופל ב-handleAuthRedirect
+    } else {
+      console.log("התחברות גוגל במחשב עם popup...");
+      result = await signInWithPopup(auth, googleProvider);
+    }
+    
     const user = result.user;
     
     // בדוק אם המשתמש קיים ב-Firestore, אם לא צור פרופיל
@@ -294,41 +337,6 @@ export const signInWithGoogle = async () => {
     
     if (!userSnap.exists()) {
       await setDoc(userRef, {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        role: "user",  // הוספת שדה role כברירת מחדל
-        coins: 0,
-        referrals: 0,
-        savedOffers: 0,
-        createdAt: serverTimestamp()
-      });
-    }
-    
-    return user;
-  } catch (error) {
-    console.error("Error signing in with Google: ", error);
-    throw error;
-  }
-};
-
-export const signInWithFacebook = async () => {
-  try {
-    // נוסיף scope לפייסבוק כדי לקבל את המידע הנדרש
-    facebookProvider.addScope('email');
-    facebookProvider.addScope('public_profile');
-    
-    console.log("מנסה התחברות דרך פייסבוק עם popup...");
-    const result = await signInWithPopup(auth, facebookProvider);
-    const user = result.user;
-      
-    // טיפול בפרופיל משתמש בפיירסטור
-    const userDocRef = doc(db, "users", user.uid);
-    const userSnapshot = await getDoc(userDocRef);
-    
-    if (!userSnapshot.exists()) {
-      await setDoc(userDocRef, {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
@@ -343,8 +351,101 @@ export const signInWithFacebook = async () => {
     
     return user;
   } catch (error) {
-    console.error("שגיאת התחברות פייסבוק: ", error);
+    console.error("Error signing in with Google: ", error);
     throw error;
+  }
+};
+
+export const signInWithFacebook = async (forceRedirect = false) => {
+  try {
+    console.log("Firebase signInWithFacebook started...");
+    
+    // הגדרת פרמטרים מותאמים למובייל
+    const provider = new FacebookAuthProvider();
+    provider.addScope('email');
+    provider.addScope('public_profile');
+    
+    // הגדרות מותאמות למובייל
+    provider.setCustomParameters({
+      display: 'popup',
+      auth_type: 'rerequest',
+      scope: 'email,public_profile'
+    });
+    
+    let result;
+    const shouldUseRedirect = forceRedirect || isMobile();
+    
+    if (shouldUseRedirect) {
+      console.log("Firebase: התחברות פייסבוק במובייל עם redirect...");
+      try {
+        // במובייל - אילוץ הפניה
+        await signInWithRedirect(auth, provider);
+        console.log("Firebase: Redirect to Facebook initiated");
+        return; // התוצאה תטופל בחזרה
+      } catch (redirectError: any) {
+        console.error("Firebase: Redirect failed:", redirectError);
+        
+        // אם redirect נכשל, ננסה popup כחלופה
+        console.log("Firebase: Trying popup as fallback...");
+        try {
+          result = await signInWithPopup(auth, provider);
+        } catch (popupError: any) {
+          console.error("Firebase: Both redirect and popup failed");
+          throw new Error(`Authentication failed: ${popupError.message}`);
+        }
+      }
+    } else {
+      console.log("Firebase: התחברות פייסבוק במחשב עם popup...");
+      try {
+        result = await signInWithPopup(auth, provider);
+      } catch (popupError: any) {
+        console.error("Firebase: Popup failed, trying redirect...");
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+    }
+    
+    if (result) {
+      const user = result.user;
+      console.log("Firebase: User authenticated:", user.displayName);
+      
+      // יצירת פרופיל משתמש
+      const userDocRef = doc(db, "users", user.uid);
+      const userSnapshot = await getDoc(userDocRef);
+      
+      if (!userSnapshot.exists()) {
+        console.log("Firebase: Creating new user profile");
+        await setDoc(userDocRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          role: "user",
+          coins: 0,
+          referrals: 0,
+          savedOffers: 0,
+          createdAt: serverTimestamp()
+        });
+      }
+      
+      return user;
+    }
+  } catch (error: any) {
+    console.error("Firebase: Facebook authentication error:", error);
+    console.error("Error code:", error.code);
+    console.error("Error message:", error.message);
+    
+    // טיפול בשגיאות ספציפיות
+    let userMessage = "התחברות דרך פייסבוק נכשלה";
+    if (error.code === 'auth/popup-blocked') {
+      userMessage = "החלון נחסם. אנא אפשר חלונות קופצים ונסה שוב.";
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      userMessage = "ההתחברות בוטלה על ידי המשתמש.";
+    } else if (error.code === 'auth/network-request-failed') {
+      userMessage = "שגיאת רשת. בדוק את החיבור לאינטרנט.";
+    }
+    
+    throw new Error(userMessage);
   }
 };
 
@@ -666,24 +767,17 @@ const createSampleBusinesses = async () => {
 
 export const createRecommendation = async (recommendation: any) => {
   try {
-    // יצירת מזהה ייחודי להמלצה
     const uniqueId = `rec_${Date.now()}`;
-    
-    // הוספת המזהה הייחודי לאובייקט ההמלצה
     const recommendationWithId = {
       ...recommendation,
-      id: uniqueId,  // שמירת מזהה ייחודי כשדה
+      id: uniqueId,
       createdAt: serverTimestamp()
     };
-    
-    // שמירה במסד הנתונים
     const recommendationsCollection = collection(db, "recommendations");
     const docRef = await addDoc(recommendationsCollection, recommendationWithId);
-    
-    // החזרת האובייקט המלא עם המזהה הייחודי והמזהה של המסמך
     return {
       ...recommendationWithId,
-      docId: docRef.id  // שומרים גם את מזהה המסמך
+      docId: docRef.id
     };
   } catch (error) {
     console.error("Error creating recommendation: ", error);
@@ -794,18 +888,16 @@ export const saveOffer = async (userId: string, recommendationId: string) => {
   try {
     console.log("שומר המלצה עבור משתמש:", userId, "המלצה:", recommendationId);
     
-    // חיפוש המלצה לפי שדה id (ולא לפי מזהה מסמך)
+    // מוצא את ההמלצה המקורית כדי לקבל את מזהה המפיץ
     const recommendationsCollection = collection(db, "recommendations");
-    const q = query(recommendationsCollection, where("id", "==", recommendationId));
-    const querySnapshot = await getDocs(q);
+    const recommendationQuery = query(recommendationsCollection, where("id", "==", recommendationId));
+    const recommendationSnapshot = await getDocs(recommendationQuery);
     
     let originalReferrerId = null;
-    if (!querySnapshot.empty) {
-      const recommendationData = querySnapshot.docs[0].data();
+    if (!recommendationSnapshot.empty) {
+      const recommendationData = recommendationSnapshot.docs[0].data();
       originalReferrerId = recommendationData.userId;
       console.log("מפיץ ההמלצה המקורי:", originalReferrerId);
-    } else {
-      console.log("לא נמצאה המלצה עם מזהה:", recommendationId);
     }
     
     // בדוק אם ההמלצה כבר נשמרה

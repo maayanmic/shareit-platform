@@ -1,17 +1,17 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { createContext, useContext, useEffect, useState } from 'react';
+import { User } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { 
-  auth, 
   signInWithGoogle, 
   signInWithFacebook, 
+  handleAuthRedirect, 
   registerWithEmail, 
   loginWithEmail, 
-  logoutUser,
-  getUserData,
-  handleAuthRedirect
-} from "@/lib/firebase";
-import { User } from "firebase/auth";
-import { useToast } from "@/hooks/use-toast";
+  logoutUser, 
+  getUserData 
+} from '../lib/firebase';
+import { useToast } from "./use-toast";
+import { useLocation } from "wouter";
 
 interface AuthUser extends User {
   coins?: number;
@@ -33,18 +33,15 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  isAuthenticated: false,
-  login: async () => {},
-  register: async () => {},
-  loginWithGoogle: async () => {},
-  loginWithFacebook: async () => {},
-  logout: async () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -101,10 +98,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             referrals: userData?.referrals || 0,
             savedOffers: userData?.savedOffers || 0,
             role: userData?.role || "user",
-            isAdmin: userData?.isAdmin || false
-          };
+            isAdmin: userData?.role === "admin",
+            connections: (userData as any)?.connections || [],
+          } as AuthUser;
+          setUser(enhancedUser);
           
-          // שמירת משתמש בלוקל סטורג' להתמודדות עם ריענון דף
+          // שמירת משתמש בלוקל סטורג'
           const userToStore = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -113,20 +112,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             coins: userData?.coins || 0,
             referrals: userData?.referrals || 0,
             savedOffers: userData?.savedOffers || 0,
-            role: userData?.role || "user",
-            isAdmin: userData?.isAdmin || false,
           };
           localStorage.setItem('authUser', JSON.stringify(userToStore));
-          
-          setUser(enhancedUser);
         } catch (error) {
-          console.error("Error fetching user data: ", error);
+          console.error("Error fetching user data:", error);
           setUser(firebaseUser as AuthUser);
         }
       } else {
-        // כאשר מתנתקים, מנקים את המשתמש מהלוקל סטורג'
-        localStorage.removeItem('authUser');
         setUser(null);
+        localStorage.removeItem('authUser');
       }
       setLoading(false);
     });
@@ -180,20 +174,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await registerWithEmail(email, password, displayName);
       toast({
-        title: "Account created!",
-        description: "Your account has been successfully created.",
+        title: "חשבון נוצר!",
+        description: "החשבון שלך נוצר בהצלחה.",
       });
       setLocation("/");
     } catch (error: any) {
       console.error("Registration error: ", error);
-      let errorMessage = "Failed to create an account.";
+      let errorMessage = "יצירת החשבון נכשלה.";
       if (error.code === "auth/email-already-in-use") {
-        errorMessage = "This email is already registered.";
+        errorMessage = "האימייל הזה כבר רשום במערכת.";
       } else if (error.code === "auth/weak-password") {
-        errorMessage = "Password is too weak. Please use at least 6 characters.";
+        errorMessage = "הסיסמה חלשה מדי. השתמש לפחות ב-6 תווים.";
       }
       toast({
-        title: "Registration Error",
+        title: "שגיאת הרשמה",
         description: errorMessage,
         variant: "destructive",
       });
@@ -201,64 +195,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const loginWithGoogle = async () => {
     try {
       await signInWithGoogle();
       toast({
-        title: "Welcome!",
-        description: "You have successfully logged in with Google.",
+        title: "ברוך הבא!",
+        description: "התחברת בהצלחה באמצעות גוגל.",
       });
       setLocation("/");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Google login error: ", error);
       toast({
-        title: "Login Error",
-        description: "Failed to log in with Google.",
+        title: "שגיאת התחברות",
+        description: error.message || "התחברות דרך גוגל נכשלה.",
         variant: "destructive",
       });
       throw error;
     }
   };
 
-  const handleFacebookLogin = async () => {
+  const loginWithFacebook = async () => {
     try {
-      // בדיקה אם משתמשים במובייל או שולחן עבודה
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      console.log("מתחיל התחברות פייסבוק...");
+      
+      // זיהוי מובייל מתקדם
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(navigator.userAgent);
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isSmallScreen = window.innerWidth <= 768;
+      const isMobile = isMobileDevice || (isTouchDevice && isSmallScreen);
+      
+      console.log("Device info:", { userAgent, isMobileDevice, isTouchDevice, isSmallScreen, isMobile });
       
       if (isMobile) {
-        console.log("מתחבר דרך פייסבוק במובייל...");
-        // הצגת הודעה למשתמש שהוא יועבר לפייסבוק
+        console.log("התחברות פייסבוק במובייל...");
         toast({
           title: "מעביר לפייסבוק...",
-          description: "אתה תועבר לאפליקציית פייסבוק להתחברות",
+          description: "אתה תועבר לדף פייסבוק להתחברות",
         });
-        
-        // במובייל - שימוש בהפניה
-        await signInWithFacebook();
-        // בזמן שהמשתמש מופנה לפייסבוק, לא נמשיך את הקוד כאן
-      } else {
-        // בשולחן עבודה (popup) נציג הודעת הצלחה כרגיל
-        const user = await signInWithFacebook();
-        if (user) {
-          toast({
-            title: "ברוך הבא!",
-            description: "התחברת בהצלחה באמצעות פייסבוק.",
-          });
-          setLocation("/");
-        }
       }
-    } catch (error) {
+      
+      // קריאה אחידה לכל המכשירים
+      await signInWithFacebook();
+      console.log("Facebook authentication initiated");
+      
+      if (!isMobile) {
+        toast({
+          title: "ברוך הבא!",
+          description: "התחברת בהצלחה באמצעות פייסבוק.",
+        });
+        setLocation("/");
+      }
+    } catch (error: any) {
       console.error("שגיאה בהתחברות פייסבוק: ", error);
       
       // הודעת שגיאה מותאמת למובייל
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const errorMessage = isMobile 
-        ? "ההתחברות דרך פייסבוק במובייל דורשת הגדרות נוספות. אנא השתמש בהתחברות דרך Google או אימייל."
-        : "נכשל בהתחברות דרך פייסבוק. נסה שוב או השתמש באמצעי התחברות אחר.";
+      let errorMessage = "התחברות דרך פייסבוק נכשלה";
+      
+      if (isMobile && error.message.includes("popup")) {
+        errorMessage = "נסה לרענן את הדף ולנסות שוב";
+      }
       
       toast({
         title: "שגיאת התחברות",
-        description: errorMessage,
+        description: error.message || errorMessage,
         variant: "destructive",
       });
       throw error;
@@ -268,16 +269,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await logoutUser();
+      localStorage.removeItem('authUser');
       toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
+        title: "להתראות!",
+        description: "התנתקת בהצלחה",
       });
       setLocation("/");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Logout error: ", error);
       toast({
-        title: "Logout Error",
-        description: "Failed to log out.",
+        title: "שגיאה",
+        description: "התנתקות נכשלה",
         variant: "destructive",
       });
       throw error;
@@ -290,8 +292,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated,
     login,
     register,
-    loginWithGoogle: handleGoogleLogin,
-    loginWithFacebook: handleFacebookLogin,
+    loginWithGoogle,
+    loginWithFacebook,
     logout,
   };
 

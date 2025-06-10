@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import RecommendationCard from "@/components/recommendation/recommendation-card";
 import { getRecommendations, getBusinessById, getBusinesses, getLogoURL } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
-import { UserPlus, HelpCircle } from "lucide-react";
+import { UserPlus, HelpCircle, QrCode, Users, TrendingUp, Heart, MessageCircle, Share2, Star } from "lucide-react";
+
+import { rateRecommendation } from "@/lib/firebase-update";
 
 export default function Home() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -15,6 +18,48 @@ export default function Home() {
 
   const { toast } = useToast();
   const { user } = useAuth();
+
+  const handleRating = async (recommendationId: string, newRating: number, recommenderId: string) => {
+    if (!user) {
+      toast({
+        title: "נדרשת התחברות",
+        description: "עליך להיות מחובר כדי לדרג המלצות",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (recommenderId === user.uid) {
+      toast({
+        title: "לא ניתן לדרג",
+        description: "אתה לא יכול לדרג המלצה שיצרת בעצמך",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await rateRecommendation(recommendationId, newRating, user.uid);
+      
+      // עדכון הדירוג במקום ברשימת ההמלצות
+      setRecommendations(prev => prev.map(rec => 
+        rec.id === recommendationId 
+          ? { ...rec, rating: newRating } 
+          : rec
+      ));
+      
+      toast({
+        title: "דירוג נשמר",
+        description: `דירגת את ההמלצה ב-${newRating} כוכבים`,
+      });
+    } catch (error) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לשמור את הדירוג. אנא נסה שוב.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // טעינת הלוגו
   useEffect(() => {
@@ -44,7 +89,15 @@ export default function Home() {
         
         // טען את ההמלצות מהמערכת
         const data = await getRecommendations(10);
-        setRecommendations(data);
+        
+        // סנן רק המלצות של משתמשים אחרים (לא של המשתמש הנוכחי)
+        const filteredRecommendations = data.filter((rec: any) => 
+          (rec.recommenderId && rec.recommenderId !== user.uid) || 
+          (rec.userId && rec.userId !== user.uid)
+        );
+        
+        console.log(`Filtered recommendations: ${filteredRecommendations.length} out of ${data.length} total`);
+        setRecommendations(filteredRecommendations);
       } catch (error) {
         console.error("Error fetching recommendations:", error);
       } finally {
@@ -196,6 +249,162 @@ export default function Home() {
           <p className="text-gray-600 dark:text-gray-400">הצטרף לקהילת הממליצים שלנו, עקוב אחרי המלצות של חברים וצור קשרים חדשים</p>
         </div>
       </div>
+
+      {/* פיד המלצות אחרונות */}
+      {user && (
+        <div className="mt-16 mb-12">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">המלצות אחרונות</h2>
+            <Link href="/discover">
+              <Button variant="outline" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                צפה בכל ההמלצות
+              </Button>
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : displayRecommendations.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayRecommendations.slice(0, 6).map((recommendation) => (
+                <Card key={recommendation.id} className="group hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+                  <div className="relative">
+                    <img 
+                      src={recommendation.businessImage || recommendation.imageUrl || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&h=250"}
+                      alt={recommendation.businessName}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-4 right-4 bg-red-500 text-white px-2 py-1 rounded-full text-sm font-semibold">
+                      {recommendation.discount}
+                    </div>
+                  </div>
+                  
+                  <CardContent className="p-6">
+                    <div className="flex items-center mb-3">
+                      <img 
+                        src={recommendation.recommenderPhoto || recommendation.userPhotoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=40&h=40"}
+                        alt={recommendation.recommenderName || recommendation.userName}
+                        className="w-8 h-8 rounded-full mr-3"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {recommendation.recommenderName || recommendation.userName}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          המליץ על {recommendation.businessName}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                      {recommendation.businessName}
+                    </h3>
+                    
+                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">
+                      {recommendation.description || recommendation.text}
+                    </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4 rtl:space-x-reverse">
+                        <div className="flex items-center">
+                          <Heart className="h-4 w-4 text-red-500 mr-1" />
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {recommendation.savedCount || 0}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <div className="flex items-center gap-1" style={{ zIndex: 10 }}>
+                            {[1, 2, 3, 4, 5].map((starNumber) => (
+                              <button
+                                key={starNumber}
+                                type="button"
+                                className="border-none bg-transparent p-0 m-0 outline-none focus:outline-none cursor-pointer hover:scale-110 transition-transform"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log(`=== HOME PAGE STAR CLICK ===`);
+                                  console.log(`Star ${starNumber} clicked on recommendation ${recommendation.id}`);
+                                  
+                                  handleRating(
+                                    recommendation.id, 
+                                    starNumber, 
+                                    recommendation.recommenderId || recommendation.userId
+                                  );
+                                }}
+                                style={{ lineHeight: 0 }}
+                              >
+                                <Star
+                                  className={`h-3 w-3 ${starNumber <= (recommendation.rating || 5) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                                  style={{ pointerEvents: 'none' }}
+                                />
+                              </button>
+                            ))}
+                            <span className="text-xs text-gray-500 ml-2">{recommendation.rating || 5}/5</span>
+                          </div>
+                          {user && (recommendation.recommenderId || recommendation.userId) !== user.uid && (
+                            <span className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                              לחץ לדירוג
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <Link href={`/recommendation/${recommendation.id}`}>
+                        <Button size="sm" variant="ghost" className="text-blue-600 hover:text-blue-700">
+                          צפה בהמלצה
+                        </Button>
+                      </Link>
+                    </div>
+                    
+                    {recommendation.validUntil && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        בתוקף עד: {recommendation.validUntil}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="text-center py-12">
+              <CardContent>
+                <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  אין עדיין המלצות מחברים
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  התחבר עם חברים כדי לראות את ההמלצות שלהם
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Link href="/discover">
+                    <Button className="flex items-center gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      מצא חברים
+                    </Button>
+                  </Link>
+                  <Link href="/how-it-works">
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <QrCode className="h-4 w-4" />
+                      צור המלצה חדשה
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -12,7 +12,7 @@ import {
   limit
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 
 // Use the same Firebase configuration as in firebase.ts
 const firebaseConfig = {
@@ -25,7 +25,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
 // פונקציות לעבודה עם משתמשים וחיבורים
@@ -83,30 +83,46 @@ export const createConnection = async (userId: string, targetUserId: string) => 
 
 export const getUserRating = async (userId: string) => {
   try {
-    // הבא את כל ההמלצות של המשתמש
-    const recommendationsRef = collection(db, "recommendations");
-    const q = query(recommendationsRef, where("userId", "==", userId));
-    const querySnapshot = await getDocs(q);
+    console.log(`מחשב דירוג משתמש: ${userId}`);
     
-    if (querySnapshot.empty) {
-      return 0; // אין המלצות, אין דירוג
+    // הבא את כל ההמלצות של המשתמש
+    const userRecommendations = await getUserRecommendations(userId);
+    
+    if (!userRecommendations || userRecommendations.length === 0) {
+      console.log("לא נמצאו המלצות למשתמש");
+      return 0;
     }
     
-    // חשב את ממוצע הדירוגים
-    let totalRating = 0;
-    let ratedRecommendations = 0;
+    let allRatings: number[] = [];
+    let totalRatingsCount = 0;
     
-    querySnapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.rating) {
-        totalRating += data.rating;
-        ratedRecommendations++;
+    userRecommendations.forEach(recommendation => {
+      if (recommendation.ratings && typeof recommendation.ratings === 'object') {
+        // עבור על כל הדירוגים בהמלצה הזו
+        Object.entries(recommendation.ratings).forEach(([raterUserId, rating]) => {
+          // רק דירוגים מאחרים (לא מהמשתמש עצמו)
+          if (raterUserId !== userId && typeof rating === 'number' && rating > 0) {
+            allRatings.push(rating);
+            totalRatingsCount++;
+            console.log(`המלצה ${recommendation.id}: דירוג ${rating} מ-${raterUserId}`);
+          }
+        });
       }
     });
     
-    return ratedRecommendations > 0 ? totalRating / ratedRecommendations : 0;
+    if (allRatings.length === 0) {
+      console.log("אין דירוגים מאחרים למשתמש");
+      return 0;
+    }
+    
+    const averageRating = allRatings.reduce((sum, rating) => sum + rating, 0) / allRatings.length;
+    const roundedRating = Number(averageRating.toFixed(1));
+    
+    console.log(`דירוג כללי של משתמש ${userId}: ${roundedRating} (מתוך ${totalRatingsCount} דירוגים מאחרים על ${userRecommendations.length} המלצות)`);
+    
+    return roundedRating;
   } catch (error) {
-    console.error("שגיאה בקבלת דירוג משתמש:", error);
+    console.error("שגיאה בחישוב דירוג המשתמש:", error);
     return 0;
   }
 };
@@ -172,15 +188,24 @@ export const rateRecommendation = async (recommendationId: string, rating: numbe
     }
     
     const recommendationDoc = querySnapshot.docs[0];
+    const currentData = recommendationDoc.data();
     
-    // עדכון הדירוג
+    // יצירת אובייקט דירוגים אם לא קיים
+    const ratings = currentData.ratings || {};
+    ratings[userId] = rating;
+    
+    // חישוב ממוצע דירוגים
+    const ratingsArray = Object.values(ratings) as number[];
+    const averageRating = ratingsArray.reduce((sum, r) => sum + r, 0) / ratingsArray.length;
+    
+    // עדכון ההמלצה עם הדירוג החדש
     await updateDoc(recommendationDoc.ref, {
-      rating: rating,
-      ratedBy: userId,
-      ratedAt: serverTimestamp()
+      ratings: ratings,
+      rating: Number(averageRating.toFixed(1)),
+      lastRatedAt: serverTimestamp()
     });
     
-    console.log("דירוג ההמלצה עודכן בהצלחה");
+    console.log(`דירוג ההמלצה עודכן: ${rating} מ-${userId}, ממוצע חדש: ${averageRating.toFixed(1)}`);
     return true;
   } catch (error) {
     console.error("שגיאה בדירוג המלצה:", error);
@@ -247,7 +272,7 @@ export const getUserData = async (userId: string) => {
 // פונקציה להבאת ההמלצות של משתמש ספציפי - משופרת לחיפוש בכל המקומות האפשריים
 export const getUserRecommendations = async (userId: string) => {
   try {
-    console.log(`מחפש המלצות עבור משתמש ${userId}`);
+    console.log(`מחפש המלצות עבור משתמש: "${userId}"`);
     
     // מאגר ההמלצות הסופי
     let foundRecommendations: any[] = [];
@@ -255,7 +280,7 @@ export const getUserRecommendations = async (userId: string) => {
     
     // השיטה החדשה - נביא את כל ההמלצות (מוגבל ל-200) ונסנן אותן לאחר מכן לפי כל השדות האפשריים
     const allRecommendationsSnapshot = await getDocs(query(recommendationsRef, limit(200)));
-    console.log(`נטענו ${allRecommendationsSnapshot.docs.length} המלצות מהמסד לסינון`);
+    console.log(`נטענו ${allRecommendationsSnapshot.docs.length} המלצות לבדיקה`);
     
     // עבור על כל ההמלצות ומצא את אלו שקשורות למשתמש
     allRecommendationsSnapshot.docs.forEach(doc => {
@@ -282,6 +307,7 @@ export const getUserRecommendations = async (userId: string) => {
       // אם אחד מהשדות הללו תואם את מזהה המשתמש, זו המלצה של המשתמש
       if (fieldsToCheck.includes(userId)) {
         isUserRecommendation = true;
+        console.log(`נמצאה התאמה למשתמש ${userId} בהמלצה ${recommendationId}`);
       }
       
       // גם בדיקה של שדות מקוננים או מערכים
@@ -297,45 +323,26 @@ export const getUserRecommendations = async (userId: string) => {
       if (isUserRecommendation && !foundRecommendations.some(r => r.id === recommendationId)) {
         foundRecommendations.push({
           id: recommendationId,
+          firestoreId: doc.id, // גם מזהה Firestore המקורי
           ...data
         });
       }
     });
     
-    // טעינת המלצות ספציפיות לפי שדות אינדקס נפוצים
-    const userIdQuery = query(recommendationsRef, where("userId", "==", userId));
-    const userIdSnapshot = await getDocs(userIdQuery);
-    
-    userIdSnapshot.docs.forEach(doc => {
-      if (!foundRecommendations.some(r => r.id === doc.id)) {
-        foundRecommendations.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      }
-    });
-    
-    const recommenderIdQuery = query(recommendationsRef, where("recommenderId", "==", userId));
-    const recommenderIdSnapshot = await getDocs(recommenderIdQuery);
-    
-    recommenderIdSnapshot.docs.forEach(doc => {
-      if (!foundRecommendations.some(r => r.id === doc.id)) {
-        foundRecommendations.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      }
-    });
+    // השאילתות הספציפיות הוסרו כי הלולאה הכללית כבר מוצאת את כל ההמלצות
     
     // אם לא נמצאו המלצות - החזר מערך ריק בלי להדפיס הודעות
     if (foundRecommendations.length === 0) {
+      console.log(`לא נמצאו המלצות למשתמש ${userId}`);
       return [];
     }
     
-    console.log(`סך הכל נמצאו ${foundRecommendations.length} המלצות למשתמש ${userId}`);
+    console.log(`נמצאו ${foundRecommendations.length} המלצות למשתמש ${userId}`);
     
     // עיבוד ופורמט ההמלצות שנמצאו
-    return formatRecommendations(foundRecommendations);
+    const formatted = formatRecommendations(foundRecommendations);
+    console.log(`לאחר עיבוד: ${formatted.length} המלצות`);
+    return formatted;
   } catch (error) {
     console.error("שגיאה בהבאת המלצות משתמש:", error);
     return [];
@@ -375,11 +382,11 @@ function formatRecommendations(recommendations: any[]) {
       recommendation.description = "המלצה על " + (recommendation.businessName || "עסק זה");
     }
     
-    if (!recommendation.rating && recommendation.ratings) {
+    // שמירה על דירוג אמיתי - רק אם אין דירוג כבר קיים
+    if (typeof recommendation.rating === 'undefined' && recommendation.ratings) {
       recommendation.rating = recommendation.ratings;
-    } else if (!recommendation.rating) {
-      recommendation.rating = 4.5; // ברירת מחדל
     }
+    // לא דורסים דירוגים קיימים ולא מוסיפים ברירות מחדל
     
     if (!recommendation.savedCount) {
       recommendation.savedCount = Math.floor(Math.random() * 30) + 5; // ברירת מחדל

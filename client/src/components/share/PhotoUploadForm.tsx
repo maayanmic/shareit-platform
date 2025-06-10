@@ -77,7 +77,7 @@ export default function PhotoUploadForm({
       return;
     }
 
-    if (!selectedImage && !imagePreviewUrl) {
+    if (!selectedImage) {
       toast({
         title: "תמונה חסרה",
         description: "אנא בחר תמונה להמלצה",
@@ -89,23 +89,16 @@ export default function PhotoUploadForm({
     try {
       setIsSubmitting(true);
 
-      // השתמש בתצוגה המקדימה של התמונה מיד - זה יותר מהיר
-      const imageUrl = imagePreviewUrl || "";
+      // Upload the image to Firebase Storage first
+      const uploadPath = `recommendations/${user.uid}/${Date.now()}_${selectedImage.name}`;
+      const imageUrl = await uploadImage(selectedImage, uploadPath);
       
-      // העבר לשלב הבא מיד
-      onComplete(recommendationText, imageUrl);
-      
-      // העלאת התמונה תתבצע ברקע אם נדרש
-      if (selectedImage && user) {
-        try {
-          const uploadPath = `recommendations/${user.uid}/${Date.now()}_${selectedImage.name}`;
-          await uploadImage(selectedImage, uploadPath);
-          console.log("תמונה הועלתה בהצלחה ברקע");
-        } catch (uploadError) {
-          console.error("שגיאה בהעלאת תמונה ברקע:", uploadError);
-          // לא מציג שגיאה למשתמש כי הוא כבר עבר לשלב הבא
-        }
+      if (!imageUrl) {
+        throw new Error("Failed to upload image");
       }
+
+      // Now complete the form with the Firebase Storage URL
+      onComplete(recommendationText, imageUrl);
       
       setIsSubmitting(false);
       
