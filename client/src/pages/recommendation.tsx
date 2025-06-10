@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { getBusinessById, saveOffer, getRecommendations } from "@/lib/firebase";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Copy, Star } from "lucide-react";
 import RecommendationCard from "@/components/recommendation/recommendation-card";
 
 interface RecommendationParams {
@@ -54,20 +54,21 @@ export default function RecommendationPage() {
             console.log("נמצאה המלצה:", foundRecommendation);
             
             // המרת הנתונים למבנה שנדרש בדף
+            const rec: any = foundRecommendation;
             const formattedRecommendation = {
-              id: foundRecommendation.id,
-              businessId: foundRecommendation.businessId,
-              businessName: foundRecommendation.businessName,
-              description: foundRecommendation.text || foundRecommendation.description,
-              discount: foundRecommendation.discount || "10% הנחה",
-              rating: foundRecommendation.rating || 5,
-              imageUrl: foundRecommendation.imageUrl,
-              expiryDate: foundRecommendation.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-              savedCount: foundRecommendation.savedCount || 0,
+              id: rec.id,
+              businessId: rec.businessId,
+              businessName: rec.businessName,
+              description: rec.text || rec.description,
+              discount: rec.discount || "10% הנחה",
+              rating: rec.rating || 5,
+              imageUrl: rec.imageUrl,
+              expiryDate: rec.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              savedCount: rec.savedCount || 0,
               creator: {
-                id: foundRecommendation.userId || referrerId || "user-1",
-                name: foundRecommendation.userName || "משתמש",
-                photoUrl: foundRecommendation.userPhotoURL || "https://randomuser.me/api/portraits/men/32.jpg",
+                id: rec.userId || referrerId || "user-1",
+                name: rec.userName || "משתמש",
+                photoUrl: rec.userPhotoURL || "https://randomuser.me/api/portraits/men/32.jpg",
               }
             };
             
@@ -86,7 +87,7 @@ export default function RecommendationPage() {
                   category: "עסק",
                   description: "פרטי העסק אינם זמינים",
                   address: "כתובת לא זמינה",
-                  image: foundRecommendation.businessImage || "https://images.unsplash.com/photo-1537047902294-62a40c20a6ae?q=80&w=500",
+                  image: rec.imageUrl || "https://images.unsplash.com/photo-1537047902294-62a40c20a6ae?q=80&w=500",
                 });
               }
             } catch (businessError) {
@@ -181,6 +182,23 @@ export default function RecommendationPage() {
   const handleGoBack = () => {
     navigate("/");
   };
+
+  const handleCopyLink = async () => {
+    try {
+      const currentUrl = window.location.href;
+      await navigator.clipboard.writeText(currentUrl);
+      toast({
+        title: "הקישור הועתק",
+        description: "קישור ההמלצה הועתק ללוח"
+      });
+    } catch (error) {
+      toast({
+        title: "שגיאה בהעתקה",
+        description: "לא ניתן להעתיק את הקישור",
+        variant: "destructive"
+      });
+    }
+  };
   
   if (loading) {
     return (
@@ -254,8 +272,45 @@ export default function RecommendationPage() {
           </div>
         </Card>
         
-        <div className="md:col-span-4">
-          <Card className="p-6 mb-6">
+        <div className="md:col-span-4 space-y-6">
+          {/* כפתור דירוג המלצה */}
+          <Card className="p-6 bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200">
+            <div className="text-center">
+              <div className="flex justify-center items-center mb-4">
+                <div className="bg-amber-500 text-white rounded-full p-3">
+                  <Star className="h-8 w-8 fill-current" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-amber-800 mb-2">
+                {recommendation.rating ? `${recommendation.rating}/5` : "טרם דורג"}
+              </h3>
+              <p className="text-amber-700 text-sm mb-4">
+                דירוג ההמלצה
+              </p>
+              <div className="flex justify-center space-x-1 mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`h-5 w-5 ${
+                      star <= (recommendation.rating || 0)
+                        ? "text-amber-400 fill-current"
+                        : "text-gray-300"
+                    }`}
+                  />
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                size="sm"
+              >
+                דרג המלצה זו
+              </Button>
+            </div>
+          </Card>
+
+          {/* פרטי העסק */}
+          <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">פרטי העסק</h2>
             <div className="space-y-4">
               <div>
@@ -276,14 +331,45 @@ export default function RecommendationPage() {
             
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span>נשמר</span>
-                <span>{recommendation.savedCount} פעמים</span>
-              </div>
-              <div className="flex justify-between">
                 <span>בתוקף עד</span>
                 <span>{new Date(recommendation.expiryDate).toLocaleDateString('he-IL')}</span>
               </div>
             </div>
+          </Card>
+
+          {/* כפתורי פעולה */}
+          <Card className="p-4">
+            <Button
+              variant="outline"
+              className="w-full mb-3"
+              onClick={handleCopyLink}
+            >
+              <Copy className="h-4 w-4 ml-2" />
+              העתק קישור
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                const text = `בדקו את ההמלצה הזאת: ${business?.name} - ${recommendation.discount} הנחה!`;
+                const url = window.location.href;
+                if (navigator.share) {
+                  navigator.share({
+                    title: `המלצה: ${business?.name}`,
+                    text: text,
+                    url: url
+                  });
+                } else {
+                  navigator.clipboard.writeText(`${text} ${url}`);
+                  toast({
+                    title: "הועתק ללוח",
+                    description: "טקסט השיתוף הועתק ללוח"
+                  });
+                }
+              }}
+            >
+              שתף בפייסבוק
+            </Button>
           </Card>
         </div>
       </div>
