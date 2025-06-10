@@ -132,7 +132,7 @@ export default function RedeemOffer() {
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">מימוש הטבה</CardTitle>
-            <p className="text-gray-600">הצגי את הקוד הזה לבעל העסק</p>
+            <p className="text-gray-600">הצג את הקוד הזה לבעל העסק</p>
           </CardHeader>
           <CardContent className="p-6 text-center space-y-4">
             {/* שם העסק */}
@@ -179,7 +179,7 @@ export default function RedeemOffer() {
         <Card className="border-dashed border-2 border-blue-300 bg-blue-50">
           <CardContent className="p-6 text-center">
             <Store className="h-12 w-12 mx-auto mb-4 text-blue-600" />
-            <h3 className="text-lg font-bold mb-2">דמיית מימוש בעל עסק</h3>
+            <h3 className="text-lg font-bold mb-2">הדמיית מימוש בעל עסק</h3>
             <p className="text-sm text-gray-600 mb-4">
               בתהליך האמיתי, בעל העסק יסרוק את הקוד או יקליד אותו
             </p>
@@ -204,7 +204,7 @@ export default function RedeemOffer() {
                 className="bg-blue-600 hover:bg-blue-700"
                 size="lg"
               >
-                {claiming ? "מבצע מימוש..." : "דמה מימוש הטבה"}
+                {claiming ? "מבצע מימוש..." : "מימוש הטבה"}
               </Button>
             )}
           </CardContent>

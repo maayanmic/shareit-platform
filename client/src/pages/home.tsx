@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import RecommendationCard from "@/components/recommendation/recommendation-card";
-import { getRecommendations, getBusinessById, getBusinesses, getLogoURL } from "@/lib/firebase";
+import { getRecommendations, getBusinessById, getBusinesses, getLogoURL, saveOffer, getSavedOffers } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [hasConnections, setHasConnections] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [savedMap, setSavedMap] = useState<Record<string, boolean>>({});
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -56,6 +57,42 @@ export default function Home() {
       toast({
         title: "שגיאה",
         description: "לא ניתן לשמור את הדירוג. אנא נסה שוב.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveRecommendation = async (recommendationId: string, recommenderId: string) => {
+    if (!user) {
+      toast({
+        title: "נדרשת התחברות",
+        description: "עליך להיות מחובר כדי לשמור המלצות",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (recommenderId === user.uid) {
+      toast({
+        title: "לא ניתן לשמור",
+        description: "אתה לא יכול לשמור המלצה שיצרת בעצמך",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (savedMap[recommendationId]) return;
+    try {
+      await saveOffer(user.uid, recommendationId);
+      setSavedMap((prev) => ({ ...prev, [recommendationId]: true }));
+      toast({
+        title: "נשמר בהצלחה",
+        description: "ההמלצה נשמרה בארנק הדיגיטלי שלך"
+      });
+    } catch (error) {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לשמור את ההמלצה. אנא נסה שוב.",
         variant: "destructive",
       });
     }
@@ -107,6 +144,21 @@ export default function Home() {
 
     fetchRecommendations();
   }, [user]);
+
+  // Check if recommendations are saved immediately when the page loads
+  useEffect(() => {
+    const checkSaved = async () => {
+      if (!user || recommendations.length === 0) return;
+      const savedOffers = await getSavedOffers(user.uid);
+      const savedIds = new Set(savedOffers.map((offer: any) => offer.recommendationId || offer.recommendation?.id));
+      const newMap: Record<string, boolean> = {};
+      recommendations.forEach((rec) => {
+        newMap[rec.id] = savedIds.has(rec.id);
+      });
+      setSavedMap(newMap);
+    };
+    checkSaved();
+  }, [user, recommendations]);
 
   // Sample data for when no actual data is available yet
   const sampleRecommendations = [
@@ -255,12 +307,6 @@ export default function Home() {
         <div className="mt-16 mb-12">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">המלצות אחרונות</h2>
-            <Link href="/discover">
-              <Button variant="outline" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                צפה בכל ההמלצות
-              </Button>
-            </Link>
           </div>
 
           {loading ? (
@@ -301,9 +347,7 @@ export default function Home() {
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
                           {recommendation.recommenderName || recommendation.userName}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          המליץ על {recommendation.businessName}
-                        </p>
+    
                       </div>
                     </div>
                     
@@ -317,12 +361,6 @@ export default function Home() {
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                        <div className="flex items-center">
-                          <Heart className="h-4 w-4 text-red-500 mr-1" />
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
-                            {recommendation.savedCount || 0}
-                          </span>
-                        </div>
                         <div className="flex flex-col items-end">
                           <div className="flex items-center gap-1" style={{ zIndex: 10 }}>
                             {[1, 2, 3, 4, 5].map((starNumber) => (
@@ -352,19 +390,32 @@ export default function Home() {
                             ))}
                             <span className="text-xs text-gray-500 ml-2">{recommendation.rating || 5}/5</span>
                           </div>
-                          {user && (recommendation.recommenderId || recommendation.userId) !== user.uid && (
-                            <span className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                              לחץ לדירוג
-                            </span>
-                          )}
+
                         </div>
                       </div>
                       
-                      <Link href={`/recommendation/${recommendation.id}`}>
-                        <Button size="sm" variant="ghost" className="text-blue-600 hover:text-blue-700">
-                          צפה בהמלצה
-                        </Button>
-                      </Link>
+                      <div className="flex flex-col gap-2">
+                        <Link href={`/recommendation/${recommendation.id}`}>
+                          <Button size="sm" variant="ghost" className="text-blue-600 hover:text-blue-700 w-full">
+                            צפה בהמלצה
+                          </Button>
+                        </Link>
+                        {user && (recommendation.recommenderId || recommendation.userId) !== user.uid && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="w-full flex items-center justify-center gap-1"
+                            onClick={() => handleSaveRecommendation(
+                              recommendation.id, 
+                              recommendation.recommenderId || recommendation.userId
+                            )}
+                            disabled={!!savedMap[recommendation.id]}
+                          >
+                            <Heart className={`h-3 w-3 ${savedMap[recommendation.id] ? 'text-red-500' : ''}`} />
+                            שמור
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
                     {recommendation.validUntil && (

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { getUserRating, createConnection, getUserData, getUserRecommendations, checkConnection, rateRecommendation } from "@/lib/firebase-update";
+import { saveOffer, getSavedOffers } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Star, StarHalf, UserPlus, Check, AlertCircle, Info, Heart } from "lucide-react";
@@ -72,6 +73,44 @@ function SimpleRecommendationCard({ recommendation, user, toast, onRatingUpdate 
         title: "שגיאה בדירוג",
         description: "לא ניתן לשמור את הדירוג כעת",
         variant: "destructive",
+      });
+    }
+  };
+
+  // בדוק אם ההמלצה שמורה בטעינה
+  useEffect(() => {
+    async function checkIfSaved() {
+      if (user && recommendation && recommendation.id) {
+        const saved = await getSavedOffers(user.uid);
+        const found = saved.some((offer: any) => offer.recommendationId === recommendation.id);
+        setIsSaved(found);
+      }
+    }
+    checkIfSaved();
+  }, [user, recommendation]);
+
+  const handleSave = async () => {
+    if (!user) {
+      toast({
+        title: "נדרש לוגין",
+        description: "צריך להיות מחובר כדי לשמור המלצות",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await saveOffer(user.uid, recommendation.id);
+      setIsSaved(true);
+      toast({
+        title: "נשמר בהצלחה",
+        description: "ההמלצה נשמרה בארנק הדיגיטלי שלך",
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "שגיאה בשמירה",
+        description: "לא ניתן לשמור את ההמלצה. אנא נסה שוב מאוחר יותר.",
+        variant: "destructive"
       });
     }
   };
@@ -167,7 +206,7 @@ function SimpleRecommendationCard({ recommendation, user, toast, onRatingUpdate 
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setIsSaved(!isSaved)}
+              onClick={handleSave}
               className="h-8 px-2 flex items-center gap-1"
             >
               <Heart className={`h-3 w-3 ${isSaved ? 'fill-red-500 text-red-500' : ''}`} />

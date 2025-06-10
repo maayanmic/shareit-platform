@@ -15,7 +15,7 @@ import RecommendationPage from "@/pages/recommendation";
 import RecommendationById from "@/pages/recommendation-by-id";
 import BusinessPage from "@/pages/business";
 import RedeemOffer from "@/pages/redeem-offer";
-import DesktopNav from "@/components/navigation/desktop-nav";
+import DesktopNav from "@/components/navigation/desktop-nav-fixed";
 import MobileNav from "@/components/navigation/mobile-nav";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { QRScannerProvider } from "@/components/qr/qr-scanner-modal";

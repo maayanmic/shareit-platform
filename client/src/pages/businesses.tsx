@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Search, MapPin, Filter, MapPinIcon, PhoneIcon, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 // רכיב תצוגת בית עסק
 function BusinessCard({ business }: { business: any }) {
@@ -56,37 +57,60 @@ function BusinessCard({ business }: { business: any }) {
               צפייה בפרטים
             </Button>
           </Link>
-          <Link href={`/business/${business.id}`}>
-            <Button variant="outline" size="sm">
-              אהבתי
-            </Button>
-          </Link>
-          <Link href={`/business/${business.id}`}>
-            <Button variant="outline" size="sm">
-              שיתוף
-            </Button>
-          </Link>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm">
+                אהבתי
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">יתווסף בעתיד</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm">
+                שיתוף
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">יתווסף בעתיד</TooltipContent>
+          </Tooltip>
         </div>
       </CardContent>
     </Card>
   );
 }
 
+const categories = [
+  "מסעדה",
+  "בית קפה",
+  "שירותים מקצועיים",
+  "בריאות",
+  "חינוך",
+  "קמעונאות",
+  "טכנולוגיה",
+  "אחר"
+];
+
 export default function Businesses() {
   const { user } = useAuth();
   const { businesses, isLoading } = useBusinesses();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [showDropdown, setShowDropdown] = useState(false);
 
   // השתמש רק בנתונים האמיתיים מFirebase
   const displayBusinesses = businesses || [];
 
-  const filteredBusinesses = searchTerm 
-    ? displayBusinesses.filter(business => 
-        business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredBusinesses = displayBusinesses.filter(business => {
+    const matchesSearch = searchTerm
+      ? business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         business.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (business.category && business.category.toLowerCase().includes(searchTerm.toLowerCase()))
-      ) 
-    : displayBusinesses;
+      : true;
+    const matchesCategory = selectedCategory
+      ? business.category === selectedCategory
+      : true;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="flex flex-col space-y-6">
@@ -105,14 +129,46 @@ export default function Businesses() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="md:w-auto flex flex-row-reverse items-center">
-            <MapPin className="h-4 w-4 mr-2" />
-            <span>קרוב אלי</span>
-          </Button>
-          <Button variant="outline" className="md:w-auto flex flex-row-reverse items-center">
-            <Filter className="h-4 w-4 mr-2" />
-            <span>סינון</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" className="md:w-auto flex flex-row-reverse items-center">
+                <MapPin className="h-4 w-4 mr-2" />
+                <span>קרוב אלי</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">יתווסף בעתיד</TooltipContent>
+          </Tooltip>
+          <div className="relative">
+            <Button
+              variant="outline"
+              className="md:w-auto flex flex-row-reverse items-center"
+              onClick={() => setShowDropdown((v: boolean) => !v)}
+              type="button"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              <span>סינון</span>
+            </Button>
+            {showDropdown && (
+              <div className="absolute z-10 right-0 mt-2 w-48 bg-white border rounded shadow-lg text-right">
+                <div className="p-2 border-b font-bold">בחר קטגוריה</div>
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    className={`block w-full text-right px-4 py-2 hover:bg-gray-100 ${selectedCategory === cat ? 'bg-gray-200 font-bold' : ''}`}
+                    onClick={() => { setSelectedCategory(cat); setShowDropdown(false); }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+                <button
+                  className="block w-full text-right px-4 py-2 text-red-500 hover:bg-gray-100"
+                  onClick={() => { setSelectedCategory(""); setShowDropdown(false); }}
+                >
+                  הסר סינון
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -143,11 +199,23 @@ export default function Businesses() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-md">
-          <h2 className="text-xl font-semibold mb-2">לא נמצאו בתי עסק</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-right" style={{ direction: "rtl" }}>
-            נסה לשנות את מונחי החיפוש או בדוק שוב מאוחר יותר לקבלת עסקים נוספים.
+        <div className="flex flex-col items-center justify-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-md max-w-lg mx-auto">
+          <Search className="h-16 w-16 text-gray-400 mb-4" />
+          <h2 className="text-xl font-semibold mb-2 text-center">לא נמצאו בתי עסק</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-center mb-4">
+            נסה לשנות את מונחי החיפוש, לבחור קטגוריה אחרת, או לנקות את הסינון.
           </p>
+          {(searchTerm || selectedCategory) && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("");
+                setSelectedCategory("");
+              }}
+            >
+              נקה חיפוש וסינון
+            </Button>
+          )}
         </div>
       )}
     </div>

@@ -768,10 +768,12 @@ const createSampleBusinesses = async () => {
 export const createRecommendation = async (recommendation: any) => {
   try {
     const uniqueId = `rec_${Date.now()}`;
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // חודש קדימה
     const recommendationWithId = {
       ...recommendation,
       id: uniqueId,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      validUntil
     };
     const recommendationsCollection = collection(db, "recommendations");
     const docRef = await addDoc(recommendationsCollection, recommendationWithId);
@@ -915,14 +917,15 @@ export const saveOffer = async (userId: string, recommendationId: string) => {
       console.log("המלצה כבר נשמרה קודם לכן");
       return;
     }
-    
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // חודש קדימה
     const docRef = await addDoc(savedOffersCollection, {
       userId,
       recommendationId,
       originalReferrerId, // שומר את מזהה המפיץ המקורי
       saved: true,
       claimed: false,
-      savedAt: serverTimestamp()
+      savedAt: serverTimestamp(),
+      validUntil
     });
     
     console.log("המלצה נשמרה בהצלחה עם מזהה:", docRef.id);

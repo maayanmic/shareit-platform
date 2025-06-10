@@ -174,37 +174,54 @@ export const checkConnection = async (userId: string, targetUserId: string) => {
   }
 };
 
+export const updateUserRating = async (userId: string, rating: number) => {
+  const userRef = doc(db, "users", userId);
+  await updateDoc(userRef, { rating });
+};
+
 export const rateRecommendation = async (recommendationId: string, rating: number, userId: string) => {
   try {
     console.log(`מדרג המלצה ${recommendationId} בדירוג ${rating} על ידי משתמש ${userId}`);
-    
     // מוצא את ההמלצה במסד הנתונים
     const recommendationsRef = collection(db, "recommendations");
     const q = query(recommendationsRef, where("id", "==", recommendationId));
     const querySnapshot = await getDocs(q);
-    
     if (querySnapshot.empty) {
       throw new Error("לא נמצאה המלצה עם המזהה שצוין");
     }
-    
     const recommendationDoc = querySnapshot.docs[0];
     const currentData = recommendationDoc.data();
-    
     // יצירת אובייקט דירוגים אם לא קיים
     const ratings = currentData.ratings || {};
     ratings[userId] = rating;
-    
     // חישוב ממוצע דירוגים
     const ratingsArray = Object.values(ratings) as number[];
     const averageRating = ratingsArray.reduce((sum, r) => sum + r, 0) / ratingsArray.length;
-    
     // עדכון ההמלצה עם הדירוג החדש
     await updateDoc(recommendationDoc.ref, {
       ratings: ratings,
       rating: Number(averageRating.toFixed(1)),
       lastRatedAt: serverTimestamp()
     });
-    
+    // --- עדכון ממוצע דירוגים של המשתמש (היוצר של ההמלצה) ---
+    const creatorUserId = currentData.userId;
+    if (creatorUserId) {
+      // הבא את כל ההמלצות של המשתמש
+      const userRecommendations = await getUserRecommendations(creatorUserId);
+      let allRatings: number[] = [];
+      userRecommendations.forEach(rec => {
+        if (rec.ratings && typeof rec.ratings === 'object') {
+          Object.entries(rec.ratings).forEach(([raterUserId, r]) => {
+            if (raterUserId !== creatorUserId && typeof r === 'number' && r > 0) {
+              allRatings.push(r);
+            }
+          });
+        }
+      });
+      const userAvg = allRatings.length > 0 ? allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length : 0;
+      await updateUserRating(creatorUserId, Number(userAvg.toFixed(1)));
+    }
+    // --- סוף עדכון ממוצע דירוגים ---
     console.log(`דירוג ההמלצה עודכן: ${rating} מ-${userId}, ממוצע חדש: ${averageRating.toFixed(1)}`);
     return true;
   } catch (error) {
@@ -395,3 +412,10 @@ function formatRecommendations(recommendations: any[]) {
     return recommendation;
   });
 }
+
+export const getUserConnections = async (userId: string) => {
+  const connectionsRef = collection(db, 'connections');
+  const q = query(connectionsRef, where('userId', '==', userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.data().targetUserId);
+};

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Edit, Star, Heart, MessageCircle, Share2, Settings, Trophy, Coins } from "lucide-react";
 import { Link } from "wouter";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 export default function Profile() {
   const { user, logout } = useAuth();
@@ -129,18 +130,24 @@ export default function Profile() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-end">
-              <Link href="/profile/edit">
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <Edit className="ml-2 h-4 w-4" />
-                  עריכת פרופיל
-                </Button>
-              </Link>
-              <Link href="/profile/settings">
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <Settings className="ml-2 h-4 w-4" />
-                  הגדרות
-                </Button>
-              </Link>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <Edit className="ml-2 h-4 w-4" />
+                    עריכת פרופיל
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">יתווסף בעתיד</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <Settings className="ml-2 h-4 w-4" />
+                    הגדרות
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">יתווסף בעתיד</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>

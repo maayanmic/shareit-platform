@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -6,10 +6,12 @@ import {
   StarIcon, 
   ClockIcon, 
   UsersIcon, 
-  Share2 
+  Share2, 
+  Heart 
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
+import { saveOffer, getSavedOffers } from "@/lib/firebase";
 
 interface RecommendationCardProps {
   recommendation: {
@@ -34,6 +36,28 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    // נסה לקבל את המשתמש מ-localStorage או context
+    const storedUser = localStorage.getItem('authUser');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    async function checkIfSaved() {
+      if (user && recommendation && recommendation.id) {
+        const saved = await getSavedOffers(user.uid);
+        const found = saved.some((offer: any) => offer.recommendationId === recommendation.id);
+        setIsSaved(found);
+      }
+    }
+    checkIfSaved();
+  }, [user, recommendation]);
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -56,21 +80,19 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
   };
 
   const handleSaveOffer = async () => {
-    if (isSaved) return;
-    
+    if (isSaved || !user) return;
     setIsSaving(true);
     try {
-      await apiRequest('POST', `/api/offers/save/${recommendation.id}`, {});
-      queryClient.invalidateQueries({ queryKey: ['/api/offers/saved'] });
+      await saveOffer(user.uid, recommendation.id);
       setIsSaved(true);
       toast({
-        title: "Offer Saved!",
-        description: `You've saved ${recommendation.discount}% off at ${recommendation.businessName}.`,
+        title: "נשמר בהצלחה",
+        description: `ההמלצה נשמרה בארנק הדיגיטלי שלך`,
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Unable to save this offer. Please try again.",
+        title: "שגיאה בשמירה",
+        description: "לא ניתן לשמור את ההמלצה. אנא נסה שוב מאוחר יותר.",
         variant: "destructive",
       });
     } finally {
@@ -99,26 +121,19 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
         </div>
       </div>
       <CardContent className="p-4">
-        <div className="flex justify-between items-start">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{recommendation.businessName}</h3>
-          <div className="flex items-center">
-            {renderStars(recommendation.rating)}
+        <div className="flex flex-row-reverse items-center justify-between mt-2 mb-2">
+          <div className="flex-1 text-right">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{recommendation.businessName}</h3>
+          </div>
+          <div className="flex flex-col items-center ml-4">
+            <img 
+              src={recommendation.creator.photoUrl} 
+              alt={recommendation.creator.name} 
+              className="h-10 w-10 rounded-full object-cover mb-1"
+            />
           </div>
         </div>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">{recommendation.description}</p>
-        
         <div className="flex items-center mt-4">
-          <img 
-            src={recommendation.creator.photoUrl} 
-            alt={recommendation.creator.name} 
-            className="h-6 w-6 rounded-full object-cover"
-          />
-          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-            Recommended by <span className="font-medium text-gray-700 dark:text-gray-300">{recommendation.creator.name}</span>
-          </span>
-        </div>
-        
-        <div className="flex justify-between items-center mt-4">
           <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
             <ClockIcon className="h-4 w-4 mr-1" />
             <span>Valid until {formatDate(recommendation.expiryDate)}</span>
@@ -132,11 +147,11 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
         <div className="mt-4 flex justify-between">
           <Button
             onClick={handleSaveOffer}
-            disabled={isSaved || isSaving}
-            className="flex-1 mr-2"
+            className="flex-1 mr-2 flex items-center justify-center gap-2"
             variant={isSaved ? "outline" : "default"}
           >
-            {isSaving ? "Saving..." : isSaved ? "Saved" : "Save Offer"}
+            {isSaved && <Heart className="h-4 w-4 text-red-500 fill-red-500 stroke-red-500" />}
+            שמירה
           </Button>
           <Button 
             onClick={handleShare} 

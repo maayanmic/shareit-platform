@@ -17,12 +17,13 @@ export default function Auth() {
   const handleGoogleLogin = async () => {
     setIsLoading('google');
     try {
+      console.log("Auth page: Google login button clicked");
       await loginWithGoogle();
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error("Auth page: Google login error:", error);
       toast({
-        title: "Login Failed",
-        description: "Could not login with Google. Please try again.",
+        title: "התחברות נכשלה",
+        description: error.message || "לא ניתן להתחבר דרך גוגל. נסה שוב.",
         variant: "destructive",
       });
     } finally {
@@ -33,17 +34,40 @@ export default function Auth() {
   const handleFacebookLogin = async () => {
     setIsLoading('facebook');
     try {
+      console.log("Auth page: Facebook login button clicked");
       await loginWithFacebook();
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error("Auth page: Facebook login error:", error);
       toast({
-        title: "Login Failed",
-        description: "Could not login with Facebook. Please try again.",
+        title: "התחברות נכשלה",
+        description: error.message || "לא ניתן להתחבר דרך פייסבוק. נסה שוב.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(null);
     }
+  };
+
+  const testMobileDetection = () => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isSmallScreen = window.innerWidth <= 768;
+    
+    const detectionResult = {
+      userAgent,
+      isMobileDevice,
+      isTouchDevice,
+      isSmallScreen,
+      windowWidth: window.innerWidth,
+      finalResult: isMobileDevice || (isTouchDevice && isSmallScreen)
+    };
+    
+    console.log("Mobile detection test:", detectionResult);
+    toast({
+      title: "Mobile Detection",
+      description: `Mobile: ${detectionResult.finalResult ? 'Yes' : 'No'}, Width: ${window.innerWidth}px`,
+    });
   };
 
   return (
@@ -100,6 +124,14 @@ export default function Auth() {
                 <FaFacebook className="mr-2 h-5 w-5 text-blue-600" />
               )}
               Continue with Facebook
+            </Button>
+            
+            <Button 
+              variant="secondary" 
+              onClick={testMobileDetection}
+              className="h-8 text-sm"
+            >
+              Test Mobile Detection
             </Button>
           </div>
         </CardContent>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getUsers, createConnection, checkConnection } from "@/lib/firebase-update";
+import { getUsers, createConnection, getUserConnections, getUserData } from "@/lib/firebase-update";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,8 @@ export default function Users() {
   const [searchTerm, setSearchTerm] = useState("");
   const [connectingUsers, setConnectingUsers] = useState<Set<string>>(new Set());
   const [myConnectionsCount, setMyConnectionsCount] = useState(0);
+  const [myConnections, setMyConnections] = useState<string[]>([]);
+  const [myUserData, setMyUserData] = useState<any>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -46,51 +48,16 @@ export default function Users() {
             photoURL: u.photoURL,
             coins: u.coins || 0,
             recommendationsCount: u.recommendationsCount || 0,
-            rating: u.rating || 0,
             connectionsCount: u.connectionsCount || 0,
             isConnected: false
           }));
-
-        // בדיקת חיבורים קיימים לכל משתמש וספירת החיבורים שלי
-        let currentUser = user;
-        if (!currentUser) {
-          // נסה לקבל את המשתמש מ-localStorage כפתרון זמני
-          const storedUser = localStorage.getItem('authUser');
-          if (storedUser) {
-            try {
-              currentUser = JSON.parse(storedUser);
-              console.log(`משתמש נמצא בלוקל סטורג': ${currentUser?.uid}`);
-            } catch (e) {
-              console.error("שגיאה בפענוח נתוני משתמש מלוקל סטורג':", e);
-            }
-          }
-        }
-        
-        if (currentUser) {
-          console.log(`בודק חיבורים קיימים עבור ${processedUsers.length} משתמשים`);
-          let connectionsCount = 0;
-          
-          for (const targetUser of processedUsers) {
-            try {
-              const isConnected = await checkConnection(currentUser.uid, targetUser.uid);
-              targetUser.isConnected = isConnected;
-              if (isConnected) {
-                connectionsCount++;
-              }
-              console.log(`חיבור עם ${targetUser.displayName}: ${isConnected}`);
-            } catch (error) {
-              console.error(`שגיאה בבדיקת חיבור עם ${targetUser.displayName}:`, error);
-            }
-          }
-          
-          setMyConnectionsCount(connectionsCount);
-          console.log(`סה"כ חיבורים: ${connectionsCount}`);
-        } else {
-          console.log("לא נמצא משתמש מחובר - לא ניתן לבדוק חיבורים");
-        }
-        
         setUsers(processedUsers);
         setFilteredUsers(processedUsers);
+        // Fetch my user data for rating
+        if (user?.uid) {
+          const myData = await getUserData(user.uid);
+          setMyUserData(myData);
+        }
       } catch (error) {
         console.error("Error fetching users:", error);
         toast({
@@ -102,11 +69,21 @@ export default function Users() {
         setLoading(false);
       }
     }
-
     if (user) {
       fetchUsers();
     }
   }, [user, toast]);
+
+  useEffect(() => {
+    async function fetchConnections() {
+      if (user?.uid) {
+        const connections = await getUserConnections(user.uid);
+        setMyConnections(connections);
+        setMyConnectionsCount(connections.length);
+      }
+    }
+    fetchConnections();
+  }, [user]);
 
   useEffect(() => {
     if (searchTerm.trim() === "") {
@@ -201,24 +178,23 @@ export default function Users() {
     <div className="container mx-auto max-w-6xl px-4 py-6">
       {/* כותרת וחיפוש */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8 shadow-lg">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div>
-            <h1 className="text-3xl font-bold text-right mb-2">משתמשים</h1>
-            <p className="text-gray-600 dark:text-gray-400 text-right">
-              התחבר עם אנשים אחרים וקבל המלצות מותאמות אישית
-            </p>
-          </div>
-          
-          <div className="relative max-w-md w-full">
+        <div className="flex flex-col md:flex-row-reverse md:justify-between md:items-center gap-4">
+          <div className="relative w-full md:w-1/3">
             <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-5 w-5" />
             <Input
               type="text"
               placeholder="חפש משתמשים..."
-              className="pr-10 text-right"
-              style={{ direction: "rtl" }}
+              className="pr-10 text-left"
+              style={{ direction: "rtl", textAlign: "left" }}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+          </div>
+          <div className="flex-1 text-right">
+            <h1 className="text-3xl font-bold mb-2">משתמשים</h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              התחבר עם אנשים אחרים וקבל המלצות מותאמות אישית
+            </p>
           </div>
         </div>
       </div>
@@ -239,7 +215,7 @@ export default function Users() {
         
         <Card className="text-center p-6">
           <Star className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold">4.5</h3>
+          <h3 className="text-2xl font-bold">{myUserData && myUserData.rating !== undefined ? myUserData.rating.toFixed(1) : "0.0"}</h3>
           <p className="text-gray-600 dark:text-gray-400">דירוג ממוצע</p>
         </Card>
       </div>
@@ -268,81 +244,58 @@ export default function Users() {
         </div>
       ) : filteredUsers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredUsers.map((userData) => (
-            <Card key={userData.uid} className="hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <Avatar className="h-16 w-16 ring-2 ring-gray-100 dark:ring-gray-700">
-                    <AvatarImage src={userData.photoURL} />
-                    <AvatarFallback className="text-lg">
-                      {userData.displayName.slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 text-right">
-                    <h3 className="text-lg font-semibold mb-1">
-                      {userData.displayName}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                      {userData.email}
-                    </p>
+          {filteredUsers.map((userData) => {
+            const isConnected = myConnections.includes(userData.uid);
+            return (
+              <Card key={userData.uid} className="hover:shadow-lg transition-shadow duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4 mb-4">
+                    <Avatar className="h-16 w-16 ring-2 ring-gray-100 dark:ring-gray-700">
+                      <AvatarImage src={userData.photoURL} />
+                      <AvatarFallback className="text-lg">
+                        {userData.displayName.slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
                     
-                    <div className="flex items-center gap-2 justify-end">
-                      <Badge variant="secondary" className="text-xs">
-                        {userData.rating?.toFixed(1) || "0.0"} ⭐
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {userData.coins} מטבעות
-                      </Badge>
+                    <div className="flex-1 text-right">
+                      <h3 className="text-lg font-semibold mb-1">
+                        {userData.displayName}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        {userData.email}
+                      </p>
+                      
+                      <div className="flex items-center gap-2 justify-end">
+                        <Badge variant="secondary" className="text-xs">
+                          {userData.rating !== undefined ? userData.rating.toFixed(1) : "0.0"} ⭐
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-
-                
-                <div className="flex gap-2">
-                  <Button 
-                    className="flex-1" 
-                    variant="outline"
-                    asChild
-                  >
-                    <Link href={`/user/${userData.uid}`}>
-                      <UserIcon className="h-4 w-4 mr-2" />
-                      פרופיל
-                    </Link>
-                  </Button>
                   
-                  {userData.isConnected ? (
-                    <Button 
-                      className="flex-1 bg-green-500 hover:bg-green-600 text-white" 
-                      disabled
-                    >
-                      <UserIcon className="h-4 w-4 mr-2" />
-                      מחובר
+                  <div className="flex gap-2">
+                    <Button className="flex-1" variant="outline" asChild>
+                      <Link href={`/user/${userData.uid}`}>
+                        <UserIcon className="h-4 w-4 mr-2" />
+                        פרופיל
+                      </Link>
                     </Button>
-                  ) : (
-                    <Button 
-                      className="flex-1" 
-                      onClick={() => handleConnect(userData.uid)}
-                      disabled={connectingUsers.has(userData.uid)}
-                    >
-                      {connectingUsers.has(userData.uid) ? (
-                        <>
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-r-transparent mr-2" />
-                          שולח...
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          התחבר
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {isConnected ? (
+                      <Button className="flex-1 bg-green-500 hover:bg-green-600 text-white" disabled>
+                        <UserIcon className="h-4 w-4 mr-2" />
+                        מחובר
+                      </Button>
+                    ) : (
+                      <Button className="flex-1" onClick={() => handleConnect(userData.uid)}>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        התחבר
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-md">

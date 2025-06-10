@@ -6,7 +6,43 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { getBusinessById, saveOffer, getRecommendations } from "@/lib/firebase";
-import { ArrowLeft, Share2, Bookmark } from "lucide-react";
+import { ArrowLeft, Share2, Bookmark, Star, Copy } from "lucide-react";
+import { rateRecommendation } from "@/lib/firebase-update";
+
+// פונקציה להוספת תגיות Open Graph דינמיות
+const updateMetaTags = (recommendation: any, business: any) => {
+  if (typeof document !== 'undefined') {
+    // עדכון כותרת הדף
+    document.title = `המלצה על ${business?.name || recommendation?.businessName} - ShareIt`;
+    
+    // הסרת תגיות קיימות
+    const existingTags = document.querySelectorAll('meta[property^="og:"], meta[property^="fb:"], meta[name="description"]');
+    existingTags.forEach(tag => tag.remove());
+    
+    // יצירת תגיות חדשות
+    const metaTags = [
+      { property: "og:title", content: `המלצה על ${business?.name || recommendation?.businessName}` },
+      { property: "og:description", content: recommendation?.description || `המלצה מעולה על ${business?.name}` },
+      { property: "og:image", content: recommendation?.imageUrl || business?.businessImage || business?.image },
+      { property: "og:url", content: window.location.href },
+      { property: "og:type", content: "article" },
+      { property: "og:site_name", content: "ShareIt" },
+      { property: "fb:app_id", content: import.meta.env.VITE_FACEBOOK_APP_ID || "" },
+      { name: "description", content: recommendation?.description || `המלצה מעולה על ${business?.name}` }
+    ];
+    
+    // הוספת התגיות ל-head
+    metaTags.forEach(({ property, name, content }) => {
+      if (content) {
+        const meta = document.createElement('meta');
+        if (property) meta.setAttribute('property', property);
+        if (name) meta.setAttribute('name', name);
+        meta.setAttribute('content', content);
+        document.head.appendChild(meta);
+      }
+    });
+  }
+};
 
 interface RecommendationParams {
   id: string;
@@ -244,6 +280,56 @@ export default function RecommendationById() {
   const handleGoBack = () => {
     navigate("/");
   };
+
+  const handleRating = async (rating: number) => {
+    if (!user) {
+      toast({
+        title: "נדרשת התחברות",
+        description: "עליך להיות מחובר כדי לדרג המלצות",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!recommendation) {
+      return;
+    }
+
+    if (recommendation.creator?.id === user.uid) {
+      toast({
+        title: "לא ניתן לדרג",
+        description: "אתה לא יכול לדרג המלצה שיצרת בעצמך",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await rateRecommendation(recommendation.id, rating, user.uid);
+      
+      // עדכון הדירוג במקום
+      setRecommendation(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          rating: rating
+        };
+      });
+      
+      toast({
+        title: "דירוג נשמר",
+        description: `דירגת את ההמלצה ב-${rating} כוכבים`
+      });
+      
+    } catch (error) {
+      console.error("Error rating recommendation:", error);
+      toast({
+        title: "שגיאה בדירוג",
+        description: "לא ניתן לשמור את הדירוג. אנא נסה שוב מאוחר יותר.",
+        variant: "destructive"
+      });
+    }
+  };
   
   if (loading) {
     return (
@@ -280,77 +366,146 @@ export default function RecommendationById() {
   const creatorPhoto = recommendation.creator?.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(creatorName)}`;
 
   return (
-    <div className="container mx-auto py-8 px-4 flex flex-col items-center">
-      <Card className="w-full max-w-2xl p-0 overflow-hidden shadow-lg">
-        <div className="relative h-56 w-full">
-          <img
-            src={businessImage}
-            alt={businessName}
-            className="w-full h-full object-cover"
-          />
+    <div className="container mx-auto py-8 px-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-6xl mx-auto">
+        {/* כפתור דירוג המלצה - צד שמאל */}
+        <div className="lg:col-span-3 order-2 lg:order-1">
+          <Card className="p-6 bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200 sticky top-4">
+            <div className="text-center">
+              <div className="flex justify-center items-center mb-4">
+                <div className="bg-amber-500 text-white rounded-full p-4">
+                  <Star className="h-8 w-8 fill-current" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-amber-800 mb-2">
+                {recommendation.rating ? `${recommendation.rating}/5` : "טרם דורג"}
+              </h3>
+              <p className="text-amber-700 text-sm mb-4">
+                דירוג ההמלצה
+              </p>
+              <div className="flex justify-center space-x-1 mb-6">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => handleRating(star)}
+                    className="border-none bg-transparent p-0 m-0 outline-none focus:outline-none cursor-pointer hover:scale-110 transition-transform"
+                    disabled={!user || !recommendation || recommendation.creator?.id === user.uid}
+                  >
+                    <Star
+                      className={`h-6 w-6 ${
+                        star <= (recommendation.rating || 0)
+                          ? "text-amber-400 fill-current"
+                          : "text-gray-300 hover:text-amber-200"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              {user && recommendation.creator?.id !== user.uid ? (
+                <p className="text-sm text-amber-600 text-center">
+                  לחץ על כוכב כדי לדרג את ההמלצה
+                </p>
+              ) : user && recommendation.creator?.id === user.uid ? (
+                <p className="text-sm text-gray-500 text-center">
+                  זוהי ההמלצה שלך
+                </p>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full border-amber-300 text-amber-700 hover:bg-amber-100"
+                  size="lg"
+                  onClick={() => {
+                    toast({
+                      title: "נדרשת התחברות",
+                      description: "עליך להיות מחובר כדי לדרג המלצות",
+                      variant: "destructive"
+                    });
+                  }}
+                >
+                  התחבר כדי לדרג
+                </Button>
+              )}
+            </div>
+          </Card>
         </div>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold">{businessName}</h1>
-            <span className="badge bg-primary-500 text-white px-3 py-1 rounded-full">
-              {discount}
-            </span>
-          </div>
-          <div className="mb-4 text-gray-600 text-sm">{businessCategory}</div>
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold mb-1">המלצה</h2>
-            <p className="text-gray-800">{description}</p>
-          </div>
-          <Separator className="my-4" />
-          <div className="flex items-center mb-6">
-            <img
-              src={creatorPhoto}
-              alt={creatorName}
-              className="h-10 w-10 rounded-full ml-3"
-            />
-            <div>
-              <p className="text-sm font-medium">הומלץ ע"י</p>
-              <p className="text-sm text-gray-600">{creatorName}</p>
+
+        {/* תוכן המלצה מרכזי */}
+        <div className="lg:col-span-9 order-1 lg:order-2">
+          <Card className="p-0 overflow-hidden shadow-lg">
+            <div className="relative h-64 w-full">
+              <img
+                src={businessImage}
+                alt={businessName}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-full font-bold text-lg shadow-lg">
+                {discount}
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <Button
-              className="w-full flex items-center justify-center"
-              onClick={() => {
-                navigator.clipboard.writeText(shareUrl);
-                toast({ title: "הקישור הועתק", description: "הקישור הועתק ללוח. כעת תוכל להדביק אותו בכל מקום." });
-              }}
-              variant="outline"
-            >
-              <Share2 className="h-5 w-5 ml-2" /> העתק קישור
-            </Button>
-            <Button
-              className="w-full flex items-center justify-center bg-[#1877F2] hover:bg-[#166FE5] text-white"
-              onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank')}
-            >
-              <Share2 className="h-5 w-5 ml-2" /> שתף בפייסבוק
-            </Button>
-          </div>
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <Bookmark className="h-5 w-5 text-primary-500" />
-              <span className="text-sm">{savedCount} שמרו המלצה זו</span>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-3xl font-bold">{businessName}</h1>
+              </div>
+              <div className="mb-4 text-gray-600 text-lg">{businessCategory}</div>
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold mb-3">המלצה</h2>
+                <p className="text-gray-800 text-lg leading-relaxed">{description}</p>
+              </div>
+              
+              <Separator className="my-6" />
+              
+              <div className="flex items-center mb-6">
+                <img
+                  src={creatorPhoto}
+                  alt={creatorName}
+                  className="h-12 w-12 rounded-full ml-4"
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-500">הומלץ ע"י</p>
+                  <p className="text-lg font-semibold">{creatorName}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <Button
+                  className="w-full flex items-center justify-center h-12"
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl);
+                    toast({ title: "הקישור הועתק", description: "הקישור הועתק ללוח. כעת תוכל להדביק אותו בכל מקום." });
+                  }}
+                  variant="outline"
+                >
+                  <Copy className="h-5 w-5 ml-2" />
+                  העתק קישור
+                </Button>
+                <Button
+                  className="w-full flex items-center justify-center bg-[#1877F2] hover:bg-[#166FE5] text-white h-12"
+                  onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank')}
+                >
+                  שתף בפייסבוק
+                </Button>
+              </div>
+              
+              <div className="flex justify-center mb-6">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <span className="text-sm">בתוקף עד</span>
+                  <span className="text-sm font-semibold">{expiryDate}</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col md:flex-row gap-4">
+                <Button className="w-full h-12 text-lg" onClick={handleSaveOffer}>
+                  שמור בארנק הדיגיטלי
+                </Button>
+                <Button className="w-full h-12" variant="outline" onClick={handleGoBack}>
+                  <ArrowLeft className="h-4 w-4 ml-1" />
+                  חזרה לדף הבית
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm">בתוקף עד</span>
-              <span className="text-sm font-semibold">{expiryDate}</span>
-            </div>
-          </div>
-          <div className="flex flex-col md:flex-row gap-4">
-            <Button className="w-full" onClick={handleSaveOffer}>
-              שמור בארנק הדיגיטלי
-            </Button>
-            <Button className="w-full" variant="outline" onClick={handleGoBack}>
-              <ArrowLeft className="h-4 w-4 ml-1" /> חזרה לדף הבית
-            </Button>
-          </div>
+          </Card>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
