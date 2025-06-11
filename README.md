@@ -18,20 +18,17 @@ ShareIt enables businesses to generate QR codes that customers can scan to share
 ## Tech Stack
 
 - **Frontend**: React (TypeScript)
-- **Backend**: Node.js on Firebase Cloud Functions
-- **Database**: Firestore
+- **Database**: Firestore (Firebase)
 - **Authentication**: Firebase Auth + Facebook OAuth2
 - **Storage**: Firebase Storage
 - **Hosting**: Firebase Hosting
-- **CI/CD**: GitHub Actions
 
 ## Project Structure
 
 ```
 shareit/
-├── frontend/     # React application
-├── functions/    # Firebase Cloud Functions
-└── shared/       # Shared TypeScript types and utilities
+├── client/        # React application (main source)
+├── dist/          # Build output for Firebase Hosting
 ```
 
 ## Getting Started
@@ -43,7 +40,7 @@ shareit/
    ```
 3. Set up Firebase:
    - Create a Firebase project
-   - Enable Authentication, Firestore, Functions, and Hosting
+   - Enable Authentication, Firestore, and Hosting
    - Configure Facebook OAuth2
 4. Set up environment variables
 5. Start development:
