@@ -59,17 +59,34 @@ export const createConnection = async (userId: string, targetUserId: string) => 
       createdAt: serverTimestamp()
     });
 
-    // עדכן את שדה connections במשתמש
+    // עדכן את שדה connections במשתמש שלך
     const userDoc = doc(db, "users", userId);
     const userSnapshot = await getDoc(userDoc);
-    
+    let userConnections: string[] = [];
     if (userSnapshot.exists()) {
       const userData = userSnapshot.data();
-      const connections = userData.connections || [];
-      
-      if (!connections.includes(targetUserId)) {
+      userConnections = userData.connections || [];
+      if (!userConnections.includes(targetUserId)) {
+        userConnections = [...userConnections, targetUserId];
         await updateDoc(userDoc, {
-          connections: [...connections, targetUserId]
+          connections: userConnections,
+          connectionsCount: userConnections.length
+        });
+      }
+    }
+
+    // עדכן את שדה connections במשתמש השני
+    const targetUserDoc = doc(db, "users", targetUserId);
+    const targetUserSnapshot = await getDoc(targetUserDoc);
+    let targetConnections: string[] = [];
+    if (targetUserSnapshot.exists()) {
+      const targetData = targetUserSnapshot.data();
+      targetConnections = targetData.connections || [];
+      if (!targetConnections.includes(userId)) {
+        targetConnections = [...targetConnections, userId];
+        await updateDoc(targetUserDoc, {
+          connections: targetConnections,
+          connectionsCount: targetConnections.length
         });
       }
     }

@@ -47,7 +47,7 @@ function BusinessCard({ business }: { business: any }) {
             <PhoneIcon className="h-4 w-4 ml-2 text-gray-500" />
           </div>
           <div className="flex flex-row-reverse items-center justify-end">
-            <span>{business.website}</span>
+            <span>{business.email}</span>
             <Mail className="h-4 w-4 ml-2 text-gray-500" />
           </div>
         </div>
@@ -107,7 +107,9 @@ export default function Businesses() {
         (business.category && business.category.toLowerCase().includes(searchTerm.toLowerCase()))
       : true;
     const matchesCategory = selectedCategory
-      ? business.category === selectedCategory
+      ? (business.categories && Array.isArray(business.categories)
+          ? business.categories.includes(selectedCategory)
+          : business.category === selectedCategory)
       : true;
     return matchesSearch && matchesCategory;
   });

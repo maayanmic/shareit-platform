@@ -402,6 +402,18 @@ export default function UserProfile() {
     );
   };
 
+  if (!profileUser) {
+    return null;
+  }
+
+  let photoURL = profileUser.photoURL;
+  if (!photoURL && profileUser.providerData) {
+    const fbProvider = profileUser.providerData.find((p: any) => p.providerId === "facebook.com");
+    if (fbProvider && fbProvider.uid) {
+      photoURL = `https://graph.facebook.com/${fbProvider.uid}/picture?type=large`;
+    }
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto max-w-4xl px-4 py-8">
@@ -441,9 +453,9 @@ export default function UserProfile() {
           {/* תמונת פרופיל */}
           <div className="text-center md:text-right">
             <div className="w-24 h-24 mx-auto md:mx-0 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-              {profileUser.photoURL ? (
+              {photoURL ? (
                 <img 
-                  src={profileUser.photoURL} 
+                  src={photoURL} 
                   alt={profileUser.displayName}
                   className="w-full h-full object-cover"
                   onError={(e) => {

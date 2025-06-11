@@ -1,7 +1,6 @@
 import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Login from "@/pages/auth/login";
 import Register from "@/pages/auth/register";
@@ -73,9 +72,6 @@ function Router() {
       </Route>
       <Route path="/redeem-offer/:offerId">
         {user ? <RedeemOffer /> : <Login />}
-      </Route>
-      <Route>
-        {user ? <NotFound /> : <Login />}
       </Route>
     </Switch>
   );

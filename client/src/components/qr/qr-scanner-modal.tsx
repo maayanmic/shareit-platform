@@ -39,11 +39,13 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // סורק ה-QR
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = "qr-reader";
+  const isStoppingRef = useRef(false);
   
   // ניקוי סורק ה-QR כשהקומפוננטה נהרסת
   useEffect(() => {
     return () => {
-      if (qrScannerRef.current) {
+      if (qrScannerRef.current && !isStoppingRef.current) {
+        isStoppingRef.current = true;
         qrScannerRef.current.stop().catch(console.error);
       }
     };
@@ -57,36 +59,58 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } else {
       // קולבק ברירת מחדל כשלא מועבר קולבק ספציפי
       setOnScanCallback(() => (result: string | null) => {
-        // הניווט מטופל בתוך פונקציית handleSuccessfulScan
         console.log("ברירת מחדל: ניווט לדף העסק");
       });
     }
   }, []);
 
   // סגירת חלון הסריקה
-  const closeScanner = useCallback(() => {
+  const closeScanner = useCallback(async () => {
+    if (isStoppingRef.current) return;
+    
+    isStoppingRef.current = true;
+    
     if (qrScannerRef.current) {
-      qrScannerRef.current.stop().catch(console.error);
+      try {
+        await qrScannerRef.current.stop();
+      } catch (error) {
+        console.log("Scanner stop error on close:", error);
+      } finally {
+        qrScannerRef.current = null;
+        isStoppingRef.current = false;
+      }
+    } else {
+      isStoppingRef.current = false;
     }
     setIsOpen(false);
   }, []);
   
   // פונקציה לטיפול בסריקה מוצלחת
-  const handleSuccessfulScan = useCallback((decodedText: string) => {
+  const handleSuccessfulScan = useCallback(async (decodedText: string) => {
+    // בדיקה אם כבר בתהליך עצירה
+    if (isStoppingRef.current) {
+      console.log("Already stopping, ignoring scan");
+      return;
+    }
+    
+    isStoppingRef.current = true;
+    
     // עצירה בטוחה של הסורק
     if (qrScannerRef.current) {
       try {
-        qrScannerRef.current.stop();
+        await qrScannerRef.current.stop();
+        console.log("Scanner stopped successfully");
       } catch (error) {
-        // התעלם משגיאות עצירה כפולה
-        console.log("Scanner already stopped or stopping");
+        console.log("Scanner stop error:", error);
+      } finally {
+        qrScannerRef.current = null;
       }
     }
     
-    // סגירת המודל
     setIsOpen(false);
     
     console.log("קוד QR נסרק בהצלחה:", decodedText);
+    console.log("מצב משתמש בסריקה:", user ? "מחובר" : "לא מחובר");
     
     try {
       // נסה לפרש את טקסט ה-QR כ-URL או מזהה של עסק
@@ -94,16 +118,40 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       // בדוק אם התוצאה היא URL מלא
       if (decodedText.startsWith("http")) {
+        console.log("מעבד URL:", decodedText);
         // חלץ את מזהה העסק מה-URL
         const url = new URL(decodedText);
         const paramBusinessId = url.searchParams.get("businessId");
-        const pathSegments = url.pathname.split("/");
-        const lastSegment = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : "";
+        const pathSegments = url.pathname.split("/").filter(segment => segment.length > 0);
         
-        businessId = paramBusinessId || lastSegment || decodedText;
+        // חפש "business" בנתיב ולקח את הפרמטר הבא
+        console.log("מקטעי נתיב:", pathSegments);
+        const businessIndex = pathSegments.findIndex(segment => segment === "business");
+        console.log("אינדקס business:", businessIndex);
+        
+        let businessIdFromPath = "";
+        if (businessIndex >= 0 && businessIndex < pathSegments.length - 1) {
+          businessIdFromPath = pathSegments[businessIndex + 1];
+        } else {
+          // אם אין "business" בנתיב, קח את הפרמטר האחרון שאינו "scan"
+          businessIdFromPath = pathSegments.filter(segment => segment !== "scan")[pathSegments.length - 1] || "";
+        }
+        console.log("מזהה עסק מהנתיב:", businessIdFromPath);
+        
+        businessId = paramBusinessId || businessIdFromPath || "";
+        console.log("מזהה עסק שחולץ:", businessId);
+        
+        // נקה את מזהה העסק מפרמטרים נוספים
+        if (businessId && businessId.includes("?")) {
+          businessId = businessId.split("?")[0];
+        }
+        if (businessId && businessId.includes("#")) {
+          businessId = businessId.split("#")[0];
+        }
       } else {
         // אם זה לא URL, הנח שזה מזהה העסק עצמו
         businessId = decodedText;
+        console.log("מזהה עסק ישיר:", businessId);
       }
       
       toast({
@@ -111,38 +159,32 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         description: "מעבר לדף העסק...",
       });
       
-      // בדוק אם המשתמש מחובר
-      if (!user) {
-        // שמור את מזהה העסק בלוקל סטורג' כדי להעביר את המשתמש לאחר התחברות
-        if (businessId) {
-          localStorage.setItem("scannedBusinessId", businessId);
-          toast({
-            title: "נדרשת התחברות",
-            description: "יש להתחבר תחילה לפני שניתן להמשיך",
-          });
-          setLocation("/login");
-        } else {
-          toast({
-            title: "שגיאה",
-            description: "מזהה עסק לא חוקי",
-            variant: "destructive"
-          });
-        }
-      } else if (businessId) {
-        // קרא לפונקציית הקולבק והעבר את המשתמש לדף העסק
+      if (businessId) {
+        console.log("מנווט לדף עסק:", `/business/${businessId}`);
+        
+        // קרא לפונקציית הקולבק
         onScanCallback(businessId);
-        // ניווט לדף העסק
-        setLocation(`/business/${businessId}`);
+        
+        // ניווט לדף הסריקה שמכוון אליו ה-QR
+        setLocation(`/business/${businessId}/scan`);
+        
+        // הודעת הצלחה לאחר הניווט
+        setTimeout(() => {
+          toast({
+            title: "הופנית לדף העסק",
+            description: "כעת תוכלי ליצור המלצה על העסק",
+          });
+          isStoppingRef.current = false;
+        }, 500);
       } else {
-        // אם אין מזהה עסק תקין, הצג שגיאה
         toast({
           title: "שגיאה",
           description: "מזהה עסק לא חוקי",
           variant: "destructive"
         });
+        isStoppingRef.current = false;
       }
       
-      closeScanner();
     } catch (error) {
       console.error("שגיאה בעיבוד קוד QR:", error);
       toast({
@@ -150,8 +192,9 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         description: "לא ניתן לעבד את קוד ה-QR. נא לנסות שוב.",
         variant: "destructive"
       });
+      isStoppingRef.current = false;
     }
-  }, [closeScanner, onScanCallback, setLocation, toast, user]);
+  }, [onScanCallback, setLocation, toast, user]);
   
   // פונקציה להפעלת סורק ה-QR כשהדיאלוג נפתח
   useEffect(() => {
@@ -160,6 +203,9 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setTimeout(() => {
         const scannerContainer = document.getElementById(scannerContainerId);
         if (!scannerContainer) return;
+        
+        // איפוס דגל העצירה
+        isStoppingRef.current = false;
         
         // יצירת מופע חדש של סורק QR
         qrScannerRef.current = new Html5Qrcode(scannerContainerId);
@@ -178,7 +224,7 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           },
           (errorMessage) => {
             // שגיאות סריקה לא מוצגות למשתמש כי הן קורות כל הזמן בזמן סריקה
-            console.log(errorMessage);
+            // console.log(errorMessage);
           }
         ).catch((err) => {
           console.error("Error starting QR scanner:", err);
@@ -203,7 +249,7 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
     
     // עצירת סורק המצלמה החי אם הוא פעיל
-    if (qrScannerRef.current) {
+    if (qrScannerRef.current && !isStoppingRef.current) {
       qrScannerRef.current.stop().catch(console.error);
     }
     
@@ -225,7 +271,8 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         
         // הפעלה מחדש של סורק המצלמה החי
         setTimeout(() => {
-          if (isOpen && qrScannerRef.current) {
+          if (isOpen && !isStoppingRef.current) {
+            qrScannerRef.current = new Html5Qrcode(scannerContainerId);
             qrScannerRef.current.start(
               { facingMode: "environment" },
               { fps: 10, qrbox: { width: 250, height: 250 } },
@@ -236,18 +283,6 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }, 1000);
       });
   }, [handleSuccessfulScan, isOpen, toast]);
-
-  // הדמיית סריקת QR לצורך בדיקות
-  const simulateScan = useCallback(() => {
-    toast({
-      title: "מדמה סריקת QR",
-      description: "בסביבת ייצור, זה יסרוק קוד QR אמיתי"
-    });
-    
-    const testBusinessIds = ["coffee", "attire", "restaurant"];
-    const randomBusinessId = testBusinessIds[Math.floor(Math.random() * testBusinessIds.length)];
-    handleSuccessfulScan(randomBusinessId);
-  }, [handleSuccessfulScan, toast]);
 
   return (
     <QRScannerContext.Provider value={{ isOpen, openScanner, closeScanner }}>
@@ -278,17 +313,8 @@ export const QRScannerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     <div className="absolute bottom-0 right-0 w-14 h-14 border-b-4 border-r-4 border-white"></div>
                     <div className="absolute bottom-0 left-0 w-14 h-14 border-b-4 border-l-4 border-white"></div>
                   </div>
-                  {/* שטח שקוף באמצע */}
-                  <div className="w-full h-full flex items-center justify-center z-10">
-                    <p className="text-white text-sm text-center drop-shadow-md font-medium">
-                      מקם את קוד ה-QR בתוך המסגרת
-                    </p>
-                  </div>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 text-center">
-                סרוק את קוד ה-QR בעסק על מנת לשתף את ההמלצה שלך
-              </p>
             </div>
           </div>
         </div>

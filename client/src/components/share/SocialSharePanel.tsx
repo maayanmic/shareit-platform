@@ -130,8 +130,8 @@ export function SocialSharePanel({
                     </svg>
                     אינסטגרם
                   </Button>
-                  <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black text-white text-sm rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-50">
-                    יהיה זמין בגרסה הבאה
+                  <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-white text-gray-800 text-sm rounded-lg p-2 border border-gray-200 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-50">
+                    יתווסף בהמשך
                   </div>
                 </div>
                 <div className="group relative">
@@ -144,8 +144,8 @@ export function SocialSharePanel({
                     </svg>
                     טיקטוק
                   </Button>
-                  <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black text-white text-sm rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-50">
-                    יהיה זמין בגרסה הבאה
+                  <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-white text-gray-800 text-sm rounded-lg p-2 border border-gray-200 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-50">
+                    יתווסף בהמשך
                   </div>
                 </div>
               </div>

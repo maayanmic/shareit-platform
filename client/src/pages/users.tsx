@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Search, UserPlus, Users as UsersIcon, Star, User as UserIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import { onSnapshot, doc as firestoreDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface User {
   uid: string;
@@ -75,14 +77,15 @@ export default function Users() {
   }, [user, toast]);
 
   useEffect(() => {
-    async function fetchConnections() {
-      if (user?.uid) {
-        const connections = await getUserConnections(user.uid);
-        setMyConnections(connections);
-        setMyConnectionsCount(connections.length);
+    if (!user?.uid) return;
+    const unsubscribe = onSnapshot(firestoreDoc(db, "users", user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setMyConnections(data.connections || []);
+        setMyConnectionsCount((data.connections || []).length);
       }
-    }
-    fetchConnections();
+    });
+    return () => unsubscribe();
   }, [user]);
 
   useEffect(() => {
@@ -144,7 +147,7 @@ export default function Users() {
       );
       
       // עדכן את מספר החיבורים
-      setMyConnectionsCount(prev => prev + 1);
+      setMyConnections(prev => [...prev, targetUserId]);
     } catch (error) {
       console.error("Error creating connection:", error);
       toast({

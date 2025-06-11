@@ -78,6 +78,15 @@ export default function Profile() {
     );
   }
 
+  // Fallback for Facebook photoURL
+  let photoURL = user.photoURL;
+  if (!photoURL && user.providerData) {
+    const fbProvider = user.providerData.find((p: any) => p.providerId === "facebook.com");
+    if (fbProvider && fbProvider.uid) {
+      photoURL = `https://graph.facebook.com/${fbProvider.uid}/picture?type=large`;
+    }
+  }
+
   return (
     <div className="container mx-auto max-w-6xl px-4 py-6">
       {/* כותרת הפרופיל */}
@@ -85,7 +94,7 @@ export default function Profile() {
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
           <div className="relative">
             <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-4 ring-white shadow-lg">
-              <AvatarImage src={user.photoURL || ""} />
+              <AvatarImage src={photoURL || ""} />
               <AvatarFallback className="text-2xl">
                 {user.displayName?.slice(0, 2) || "U"}
               </AvatarFallback>

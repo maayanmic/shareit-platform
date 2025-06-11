@@ -214,7 +214,7 @@ export default function ScannedBusiness() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => navigate("/recommendations")}
+              onClick={() => navigate("/profile")}
               className="w-full"
             >
               צפייה בהמלצות
