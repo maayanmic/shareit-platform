@@ -120,7 +120,7 @@ export default function Register() {
               </div>
             </div>
             <Button variant="outline" className="w-full" onClick={handleFacebookLogin} disabled={isLoading}>
-              <Facebook className="h-5 w-5 mr-2" />
+              <Facebook className="h-5 w-5 mr-2 text-blue-600" />
               Facebook
             </Button>
           </div>

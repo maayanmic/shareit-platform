@@ -81,7 +81,6 @@ function Router() {
   );
 }
 
-// נוטרל - עכשיו זה מטופל ישירות בניתוב הראשי
 
 function App() {
   // Handle authentication redirects

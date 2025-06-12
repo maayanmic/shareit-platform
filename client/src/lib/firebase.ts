@@ -9,7 +9,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  updateProfile
+  updateProfile,
+  browserLocalPersistence,
+  setPersistence
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -49,6 +51,15 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// הוספת שמירת session בלוקאל סטורג' (קריטי למובייל)
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("Firebase persistence set to local");
+  })
+  .catch((error) => {
+    console.error("Error setting persistence:", error);
+  });
 
 // ניסיון ליצור קולקשנים אם הם לא קיימים
 (async () => {
@@ -426,6 +437,9 @@ export const signInWithFacebook = async (forceRedirect = false) => {
           savedOffers: 0,
           createdAt: serverTimestamp()
         });
+        console.log("פרופיל משתמש נוצר בהצלחה!");
+      } else {
+        console.log("משתמש קיים במערכת, ממשיך לעמוד הבית...");
       }
       
       return user;

@@ -228,7 +228,7 @@ export default function RecommendationById() {
         
         toast({
           title: "נשמר בהצלחה",
-          description: "ההמלצה נשמרה בארנק הדיגיטלי שלך"
+          description: `ההמלצה נשמרה באיזור האישי שלך`,
         });
       }
     } catch (error) {
@@ -343,7 +343,7 @@ export default function RecommendationById() {
           </div>
           <div className="flex flex-col md:flex-row gap-4">
             <Button className="w-full" onClick={handleSaveOffer}>
-              שמור בארנק הדיגיטלי
+              שמור באיזור האישי
             </Button>
             <Button className="w-full" variant="outline" onClick={handleGoBack}>
               <ArrowLeft className="h-4 w-4 ml-1" /> חזרה לדף הבית

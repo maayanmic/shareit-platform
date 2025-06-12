@@ -13,6 +13,23 @@ interface RecommendationParams {
   id: string;
 }
 
+interface Recommendation {
+  id: string;
+  businessId: string;
+  businessName: string;
+  text?: string;
+  description?: string;
+  discount?: string;
+  rating?: number;
+  imageUrl?: string;
+  validUntil?: string;
+  savedCount?: number;
+  userId?: string;
+  userName?: string;
+  userPhotoURL?: string;
+  businessImage?: string;
+}
+
 export default function RecommendationPage() {
   const [_, navigate] = useLocation();
   const params = useParams<RecommendationParams>();
@@ -44,11 +61,11 @@ export default function RecommendationPage() {
         // ניסיון לטעון את ההמלצה האמיתית מפיירבייס
         try {
           // נייבא את כל ההמלצות ונסנן לפי המזהה
-          const allRecommendations = await getRecommendations(100);
+          const allRecommendations = await getRecommendations(100) as Recommendation[];
           console.log("כל ההמלצות שנטענו:", allRecommendations);
           
           // חיפוש ההמלצה לפי המזהה
-          const foundRecommendation = allRecommendations.find((rec: any) => rec.id === recId);
+          const foundRecommendation = allRecommendations.find((rec) => rec.id === recId);
           
           if (foundRecommendation) {
             console.log("נמצאה המלצה:", foundRecommendation);
@@ -165,7 +182,7 @@ export default function RecommendationPage() {
         
         toast({
           title: "נשמר בהצלחה",
-          description: "ההמלצה נשמרה בארנק הדיגיטלי שלך"
+          description: `ההמלצה נשמרה באיזור האישי שלך`,
         });
       }
     } catch (error) {
@@ -249,7 +266,7 @@ export default function RecommendationPage() {
           
           <div className="mt-6">
             <Button className="w-full py-6" onClick={handleSaveOffer}>
-              שמור בארנק הדיגיטלי
+              שמור באיזור האישי
             </Button>
           </div>
         </Card>

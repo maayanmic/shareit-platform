@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import { UserPlus, HelpCircle, QrCode, Users, TrendingUp, Heart, MessageCircle, Share2, Star } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 import { rateRecommendation } from "@/lib/firebase-update";
 
@@ -87,7 +88,7 @@ export default function Home() {
       setSavedMap((prev) => ({ ...prev, [recommendationId]: true }));
       toast({
         title: "נשמר בהצלחה",
-        description: "ההמלצה נשמרה בארנק הדיגיטלי שלך"
+        description: `ההמלצה נשמרה באיזור האישי שלך`,
       });
     } catch (error) {
       toast({
@@ -128,10 +129,15 @@ export default function Home() {
         const data = await getRecommendations(10);
         
         // סנן רק המלצות של משתמשים אחרים (לא של המשתמש הנוכחי)
-        const filteredRecommendations = data.filter((rec: any) => 
-          (rec.recommenderId && rec.recommenderId !== user.uid) || 
-          (rec.userId && rec.userId !== user.uid)
-        );
+        const filteredRecommendations = data.filter((rec: any) => {
+          // בדוק אם ההמלצה היא של המשתמש הנוכחי
+          const isCurrentUserRecommendation = 
+            (rec.recommenderId === user.uid) || 
+            (rec.userId === user.uid);
+          
+          // החזר רק המלצות שאינן של המשתמש הנוכחי
+          return !isCurrentUserRecommendation;
+        });
         
         console.log(`Filtered recommendations: ${filteredRecommendations.length} out of ${data.length} total`);
         setRecommendations(filteredRecommendations);
@@ -160,50 +166,7 @@ export default function Home() {
     checkSaved();
   }, [user, recommendations]);
 
-  // Sample data for when no actual data is available yet
-  const sampleRecommendations = [
-    {
-      id: "rec1",
-      businessName: "Coffee Workshop",
-      businessImage: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&h=400",
-      description: "Best specialty coffee in town, friendly staff and amazing pastries! Must try their cold brew.",
-      discount: "10% OFF",
-      rating: 4,
-      recommenderName: "Alex Miller",
-      recommenderPhoto: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=40&h=40",
-      recommenderId: "user1",
-      validUntil: "Jun 30",
-      savedCount: 23,
-    },
-    {
-      id: "rec2",
-      businessName: "Urban Attire",
-      businessImage: "https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&h=400",
-      description: "Amazing selection of sustainable fashion. The staff helped me find the perfect outfit for my interview!",
-      discount: "15% OFF",
-      rating: 5,
-      recommenderName: "Jessica Lee",
-      recommenderPhoto: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?ixlib=rb-1.2.1&auto=format&fit=crop&w=40&h=40",
-      recommenderId: "user2",
-      validUntil: "Jul 15",
-      savedCount: 42,
-    },
-    {
-      id: "rec3",
-      businessName: "Fresh & Local",
-      businessImage: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&h=400",
-      description: "Farm-to-table restaurant with seasonal menu. Their honey glazed salmon is a must-try. Great for date nights!",
-      discount: "20% OFF",
-      rating: 5,
-      recommenderName: "Michael Chen",
-      recommenderPhoto: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=40&h=40",
-      recommenderId: "user3",
-      validUntil: "Aug 1",
-      savedCount: 17,
-    },
-  ];
-
-  const displayRecommendations = recommendations.length > 0 ? recommendations : sampleRecommendations;
+  const displayRecommendations = recommendations.length > 0 ? recommendations : [];
 
   return (
     <div className="container mx-auto max-w-6xl px-4">
@@ -338,16 +301,20 @@ export default function Home() {
                   
                   <CardContent className="p-6">
                     <div className="flex items-center mb-3">
-                      <img 
-                        src={recommendation.recommenderPhoto || recommendation.userPhotoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=40&h=40"}
-                        alt={recommendation.recommenderName || recommendation.userName}
-                        className="w-8 h-8 rounded-full mr-3"
-                      />
+                      <Avatar className="h-8 w-8 mr-3">
+                        <AvatarImage src={recommendation.recommenderPhoto || recommendation.userPhotoURL} alt={recommendation.recommenderName || recommendation.userName} />
+                        <AvatarFallback>
+                          {(recommendation.recommenderName || recommendation.userName || 'משתמש')
+                            .split(' ')
+                            .map((word: string) => word[0])
+                            .join('')
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
                           {recommendation.recommenderName || recommendation.userName}
                         </p>
-    
                       </div>
                     </div>
                     
@@ -418,9 +385,12 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    {recommendation.validUntil && (
+                    {recommendation.validUntil && recommendation.validUntil !== "ללא הגבלה" && (
                       <p className="text-xs text-gray-500 mt-2">
-                        בתוקף עד: {recommendation.validUntil}
+                        בתוקף עד: {(() => {
+                          const date = new Date(recommendation.validUntil);
+                          return !isNaN(date.getTime()) ? date.toLocaleDateString('he-IL') : 'ללא הגבלה';
+                        })()}
                       </p>
                     )}
                   </CardContent>
@@ -444,7 +414,7 @@ export default function Home() {
                       מצא חברים
                     </Button>
                   </Link>
-                  <Link href="/how-it-works">
+                  <Link href="/businesses">
                     <Button variant="outline" className="flex items-center gap-2">
                       <QrCode className="h-4 w-4" />
                       צור המלצה חדשה

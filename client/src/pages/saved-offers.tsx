@@ -208,10 +208,10 @@ export default function SavedOffers() {
               ))}
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8 text-center">
-              <div className="flex flex-col items-center">
+            <div className="flex justify-center">
+              <div className="text-center py-12 px-6 bg-white dark:bg-gray-800 rounded-xl shadow-md w-full max-w-lg">
                 <svg
-                  className="h-20 w-20 text-gray-400 dark:text-gray-600 mb-4"
+                  className="h-20 w-20 text-gray-400 dark:text-gray-600 mb-4 mx-auto"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -356,15 +356,15 @@ export default function SavedOffers() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={1.5}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                   />
                 </svg>
-                <h3 className="text-lg font-semibold mb-2">No Claimed Offers</h3>
+                <h3 className="text-lg font-semibold mb-2">אין הצעות שמורות</h3>
                 <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-                  You haven't claimed any offers yet. Save offers and redeem them at the business to see your history here.
+                  עדיין לא שמרת שום הצעה. עיין בהמלצות ושמור הצעות כדי לצפות בהן כאן.
                 </p>
                 <Button asChild>
-                  <Link href="/recommendations">Browse Recommendations</Link>
+                  <Link href="/recommendations">עיון בהמלצות</Link>
                 </Button>
               </div>
             </div>

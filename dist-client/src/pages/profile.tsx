@@ -242,7 +242,7 @@ export default function Profile() {
         {/* שמורים */}
         <TabsContent value="saved">
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-right">ההמלצות השמורות</h2>
+            <h2 className="text-2xl font-bold text-right">ההטבות השמורות</h2>
             
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

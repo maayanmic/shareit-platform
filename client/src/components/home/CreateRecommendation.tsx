@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { AlertCircle, Upload } from "lucide-react";
@@ -20,6 +20,7 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@/components/ui/radio-group";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const socialPlatforms = [
   { id: 'facebook', name: 'Facebook' },
@@ -121,11 +122,16 @@ export function CreateRecommendation() {
       </CardHeader>
       <CardContent className="p-6">
         <div className="flex items-start space-x-4">
-          <img 
-            src={user?.photoURL || "https://github.com/shadcn.png"} 
-            alt="User profile" 
-            className="h-10 w-10 rounded-full object-cover" 
-          />
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || "User"} />
+            <AvatarFallback>
+              {(user?.displayName || 'משתמש')
+                .split(' ')
+                .map((word: string) => word[0])
+                .join('')
+                .toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1">
             <form onSubmit={handleSubmit} className="bg-gray-100 dark:bg-gray-700 rounded-xl p-4">
               <div className="mb-4">

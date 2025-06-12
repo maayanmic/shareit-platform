@@ -103,7 +103,7 @@ function SimpleRecommendationCard({ recommendation, user, toast, onRatingUpdate 
       setIsSaved(true);
       toast({
         title: "נשמר בהצלחה",
-        description: "ההמלצה נשמרה בארנק הדיגיטלי שלך",
+        description: `ההמלצה נשמרה באיזור האישי שלך`,
         variant: "default",
       });
     } catch (error) {
@@ -455,12 +455,9 @@ export default function UserProfile() {
             <div className="w-24 h-24 mx-auto md:mx-0 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
               {photoURL ? (
                 <img 
-                  src={photoURL} 
+                  src={photoURL}
                   alt={profileUser.displayName}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&h=100";
-                  }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">

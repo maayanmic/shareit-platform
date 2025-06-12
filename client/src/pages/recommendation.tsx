@@ -166,7 +166,7 @@ export default function RecommendationPage() {
         
         toast({
           title: "נשמר בהצלחה",
-          description: "ההמלצה נשמרה בארנק הדיגיטלי שלך"
+          description: `ההמלצה נשמרה באיזור האישי שלך`,
         });
       }
     } catch (error) {
@@ -267,7 +267,7 @@ export default function RecommendationPage() {
           
           <div className="mt-6">
             <Button className="w-full py-6" onClick={handleSaveOffer}>
-              שמור בארנק הדיגיטלי
+              שמור באיזור האישי
             </Button>
           </div>
         </Card>

@@ -169,7 +169,7 @@ export default function Profile() {
             ההמלצות שלי
           </TabsTrigger>
           <TabsTrigger value="saved" className="text-right">
-            הטבות ששמרתי
+            ההטבות ששמרתי
           </TabsTrigger>
         </TabsList>
 
@@ -241,15 +241,17 @@ export default function Profile() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-md">
-                <MessageCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">עדיין לא יצרת המלצות</h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-6">
-                  התחל לשתף את החוויות שלך עם העולם
-                </p>
-                <Link href="/create-recommendation">
-                  <Button>צור המלצה ראשונה</Button>
-                </Link>
+              <div className="flex justify-center">
+                <div className="text-center py-12 px-6 bg-white dark:bg-gray-800 rounded-xl shadow-md w-full max-w-lg">
+                  <MessageCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">עדיין לא יצרת המלצות</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-6">
+                    התחל לשתף את החוויות שלך עם העולם
+                  </p>
+                  <Link href="/create-recommendation">
+                    <Button>צור המלצה ראשונה</Button>
+                  </Link>
+                </div>
               </div>
             )}
           </div>
@@ -258,7 +260,7 @@ export default function Profile() {
         {/* שמורים */}
         <TabsContent value="saved">
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-right">ההמלצות השמורות</h2>
+            <h2 className="text-2xl font-bold text-right">ההטבות השמורות</h2>
             
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -354,13 +356,13 @@ export default function Profile() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-md">
+              <div className="text-center py-12 px-6 bg-white dark:bg-gray-800 rounded-xl shadow-md w-full max-w-lg mx-auto">
                 <Heart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">אין המלצות שמורות</h3>
+                <h3 className="text-xl font-semibold mb-2">אין הטבות שמורות</h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-6">
-                  התחל לשמור המלצות שמעניינות אותך
+                  התחל לשמור הטבות שמעניינות אותך
                 </p>
-                <Link href="/businesses">
+                <Link href="/">
                   <Button>עיין בהמלצות</Button>
                 </Link>
               </div>

@@ -87,7 +87,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       setIsSaved(true);
       toast({
         title: "נשמר בהצלחה",
-        description: `ההמלצה נשמרה בארנק הדיגיטלי שלך`,
+        description: `ההמלצה נשמרה באיזור האישי שלך`,
       });
     } catch (error) {
       toast({
