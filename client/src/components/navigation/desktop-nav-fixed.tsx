@@ -85,7 +85,7 @@ export default function DesktopNav() {
               </DropdownMenu>
             </>
           ) : (
-            <Link href="/auth">
+            <Link href="/login">
               <span className="text-primary-600 dark:text-primary-500 font-semibold hover:underline">
                 התחבר / הירשם
               </span>
@@ -95,7 +95,7 @@ export default function DesktopNav() {
 
         {/* Desktop Navigation Links - Center */}
         <div className="flex items-center space-x-12">
-          {navItems.map((item) => (
+          {user && navItems.map((item) => (
             <Link key={item.href} href={item.href}>
               <span
                 className={`text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-500 font-medium cursor-pointer px-4 py-1 text-lg ${

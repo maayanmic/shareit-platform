@@ -466,7 +466,7 @@ export default function RecommendationById() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 gap-4 mb-6">
                 <Button
                   className="w-full flex items-center justify-center h-12"
                   onClick={() => {
@@ -477,12 +477,6 @@ export default function RecommendationById() {
                 >
                   <Copy className="h-5 w-5 ml-2" />
                   העתק קישור
-                </Button>
-                <Button
-                  className="w-full flex items-center justify-center bg-[#1877F2] hover:bg-[#166FE5] text-white h-12"
-                  onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank')}
-                >
-                  שתף בפייסבוק
                 </Button>
               </div>
               

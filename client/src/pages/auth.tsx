@@ -9,27 +9,10 @@ import { useTheme } from "@/hooks/use-theme";
 import { Moon, Sun } from "lucide-react";
 
 export default function Auth() {
-  const { loginWithGoogle, loginWithFacebook } = useAuth();
+  const { loginWithFacebook } = useAuth();
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
   const [isLoading, setIsLoading] = useState<'google' | 'facebook' | null>(null);
-
-  const handleGoogleLogin = async () => {
-    setIsLoading('google');
-    try {
-      console.log("Auth page: Google login button clicked");
-      await loginWithGoogle();
-    } catch (error: any) {
-      console.error("Auth page: Google login error:", error);
-      toast({
-        title: "התחברות נכשלה",
-        description: error.message || "לא ניתן להתחבר דרך גוגל. נסה שוב.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(null);
-    }
-  };
 
   const handleFacebookLogin = async () => {
     setIsLoading('facebook');
@@ -98,20 +81,6 @@ export default function Auth() {
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid grid-cols-1 gap-3">
-            <Button 
-              variant="outline" 
-              onClick={handleGoogleLogin}
-              disabled={isLoading !== null}
-              className="h-12"
-            >
-              {isLoading === 'google' ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary-500 mr-2"></div>
-              ) : (
-                <FcGoogle className="mr-2 h-5 w-5" />
-              )}
-              Continue with Google
-            </Button>
-            
             <Button 
               variant="outline" 
               onClick={handleFacebookLogin} 

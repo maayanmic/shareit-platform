@@ -31,13 +31,15 @@ function SimpleRecommendationCard({ recommendation, user, toast, onRatingUpdate 
     : 0;
   
   let formattedValidUntil = "ללא הגבלה";
-  if (validUntil && validUntil instanceof Date) {
-    formattedValidUntil = validUntil.toLocaleDateString('he-IL');
-  } else if (validUntil && typeof validUntil === 'string') {
+  if (validUntil) {
     try {
       const date = new Date(validUntil);
       if (!isNaN(date.getTime())) {
-        formattedValidUntil = date.toLocaleDateString('he-IL');
+        formattedValidUntil = date.toLocaleDateString('he-IL', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
       }
     } catch (e) {
       console.warn("Invalid date format:", validUntil);

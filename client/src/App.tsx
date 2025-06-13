@@ -77,7 +77,6 @@ function Router() {
   );
 }
 
-
 function App() {
   // Handle authentication redirects
   useEffect(() => {

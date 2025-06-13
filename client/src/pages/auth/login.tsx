@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Facebook, Mail, UserPlus, Google } from "lucide-react";
+import { Facebook, Mail, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ const loginSchema = z.object({
 });
 
 export default function Login() {
-  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
+  const { login, loginWithFacebook } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -48,17 +48,6 @@ export default function Login() {
       // לא צריך להפנות ידנית - הניתוב באפליקציה יטפל בזה כאשר ה-user משתנה
     } catch (error) {
       console.error("Login failed", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    try {
-      await loginWithGoogle();
-    } catch (error) {
-      console.error("Google login failed", error);
     } finally {
       setIsLoading(false);
     }

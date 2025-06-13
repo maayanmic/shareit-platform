@@ -391,14 +391,16 @@ function formatRecommendations(recommendations: any[]) {
       if (typeof recommendation.validUntil === 'object' && 'seconds' in recommendation.validUntil) {
         try {
           const date = new Date(recommendation.validUntil.seconds * 1000);
-          recommendation.validUntil = date;
+          recommendation.validUntil = date.toISOString();
         } catch (dateError) {
           console.error("Error converting date:", dateError);
+          // אם יש שגיאה, קבע תאריך חדש
+          recommendation.validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         }
       }
     } else {
-      // אם אין תאריך תקף, קבע תאריך עתידי
-      recommendation.validUntil = new Date(new Date().setMonth(new Date().getMonth() + 3));
+      // אם אין תאריך תקף, קבע תאריך עתידי של חודש
+      recommendation.validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     }
     
     // 2. טיפול בשדות חסרים
@@ -416,11 +418,11 @@ function formatRecommendations(recommendations: any[]) {
       recommendation.description = "המלצה על " + (recommendation.businessName || "עסק זה");
     }
     
-    // שמירה על דירוג אמיתי - רק אם אין דירוג כבר קיים
-    if (typeof recommendation.rating === 'undefined' && recommendation.ratings) {
+    if (!recommendation.rating && recommendation.ratings) {
       recommendation.rating = recommendation.ratings;
+    } else if (!recommendation.rating) {
+      recommendation.rating = 4.5; // ברירת מחדל
     }
-    // לא דורסים דירוגים קיימים ולא מוסיפים ברירות מחדל
     
     if (!recommendation.savedCount) {
       recommendation.savedCount = Math.floor(Math.random() * 30) + 5; // ברירת מחדל

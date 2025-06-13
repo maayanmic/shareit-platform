@@ -36,7 +36,7 @@ const registerSchema = z.object({
 });
 
 export default function Register() {
-  const { register, loginWithGoogle, loginWithFacebook } = useAuth();
+  const { register, loginWithFacebook } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof registerSchema>>({
@@ -55,17 +55,6 @@ export default function Register() {
       await register(data.email, data.password, data.displayName);
     } catch (error) {
       console.error("Registration failed", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    try {
-      await loginWithGoogle();
-    } catch (error) {
-      console.error("Google login failed", error);
     } finally {
       setIsLoading(false);
     }

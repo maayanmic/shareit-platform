@@ -12,6 +12,8 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { saveOffer, getSavedOffers } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "react-router-dom";
 
 interface RecommendationCardProps {
   recommendation: {
@@ -36,7 +38,8 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuth();
+  const [_, navigate] = useLocation();
 
   useEffect(() => {
     // נסה לקבל את המשתמש מ-localStorage או context
@@ -59,9 +62,19 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
     checkIfSaved();
   }, [user, recommendation]);
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const formatDate = (dateString: string | Date | undefined) => {
+    if (!dateString) return "ללא הגבלה";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "ללא הגבלה";
+      return date.toLocaleDateString('he-IL', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return "ללא הגבלה";
+    }
   };
 
   // Generate stars for rating
@@ -136,11 +149,11 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
         <div className="flex items-center mt-4">
           <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
             <ClockIcon className="h-4 w-4 mr-1" />
-            <span>Valid until {formatDate(recommendation.expiryDate)}</span>
+            <span>תוקף עד {formatDate(recommendation.expiryDate)}</span>
           </div>
           <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
             <UsersIcon className="h-4 w-4 mr-1" />
-            <span>{recommendation.savedCount} people saved</span>
+            <span>{recommendation.savedCount} שמרו המלצה זו</span>
           </div>
         </div>
         

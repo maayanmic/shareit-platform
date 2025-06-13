@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { 
-  signInWithGoogle, 
   signInWithFacebook, 
   handleAuthRedirect, 
   registerWithEmail, 
@@ -28,7 +27,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
   loginWithFacebook: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -195,25 +193,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async () => {
-    try {
-      await signInWithGoogle();
-      toast({
-        title: "ברוך הבא!",
-        description: "התחברת בהצלחה באמצעות גוגל.",
-      });
-      setLocation("/");
-    } catch (error: any) {
-      console.error("Google login error: ", error);
-      toast({
-        title: "שגיאת התחברות",
-        description: error.message || "התחברות דרך גוגל נכשלה.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
   const loginWithFacebook = async () => {
     try {
       console.log("מתחיל התחברות פייסבוק...");
@@ -292,7 +271,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated,
     login,
     register,
-    loginWithGoogle,
     loginWithFacebook,
     logout,
   };

@@ -217,7 +217,7 @@ export default function ScannedBusiness() {
               onClick={() => navigate("/profile")}
               className="w-full"
             >
-              צפייה בהמלצות
+              צפייה בהמלצות שלי
             </Button>
           </div>
         </div>
