@@ -12,8 +12,6 @@ ShareIt enables businesses to generate QR codes that customers can scan to share
 - Facebook OAuth2 authentication
 - Social media sharing with tracking
 - Digital wallet for discounts and coins
-- Business analytics dashboard
-- Admin console for management
 
 ## Tech Stack
 
